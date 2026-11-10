@@ -21,6 +21,9 @@ const FURNITURE = [
   'loungeSofa', 'loungeSofaLong', 'loungeChair', 'tableCoffee', 'tableRound', 'stoolBar', 'pottedPlant',
   'bookcaseOpen', 'bookcaseClosedWide', 'rugRound', 'rugRectangle', 'lampRoundFloor', 'lampSquareTable',
   'televisionModern', 'sideTableDrawers', 'coatRackStanding', 'trashcan',
+  'table', 'tableCloth', 'chairCushion', 'chairModernCushion', 'kitchenFridge', 'kitchenFridgeLarge', 'kitchenMicrowave',
+  'kitchenSink', 'kitchenCabinet', 'kitchenStoveElectric', 'bookcaseClosed', 'cardboardBoxClosed', 'books', 'rugSquare',
+  'loungeDesignChair', 'toaster', 'stoolBarSquare',
 ];
 // Mỗi nhân vật dùng vài ô trên bảng màu chung (ô = [cột, hàng], mỗi ô 64x128 điểm ảnh).
 // Tô lại ô là đổi màu áo, quần, tóc, da. Chỉ khai báo ô nào nhân vật dùng riêng cho phần đó.
@@ -33,7 +36,9 @@ const LOOKS = {
   'male-a': { shirt: [4, 2], pants: [0, 1], shoes: [0, 3], belt: [0, 2], skin: [1, 2] },
   'male-b': { shirt: [7, 2], pants: [0, 1], hair: [0, 2], skin: [2, 2] },
   'male-d': { shirt: [3, 3], tie: [7, 2], hair: [0, 2], skin: [2, 2] },      // mặc vest, cà vạt
+  'male-c': {},                                                               // đồng phục bảo vệ, giữ nguyên màu gốc
 };
+const CARS = ['sedan', 'sedan-sports', 'suv', 'suv-luxury', 'hatchback-sports', 'taxi', 'van', 'delivery'];
 const CAST = {
   staff: { m: ['male-a', 'male-b'], f: ['female-b', 'female-c', 'female-e', 'female-f'] },
   formal: { m: ['male-d'], f: ['female-d'] },   // trưởng phòng và CEO
@@ -55,13 +60,14 @@ export class View3D {
   static async create(container, roster) {
     const loader = new GLTFLoader();
     const cast = Object.keys(LOOKS);
-    const [people, furniture] = await Promise.all([
+    const [people, furniture, cars] = await Promise.all([
       Promise.all(cast.map((name) => loader.loadAsync(`/assets/people/${name}.glb`))),
       Promise.all(FURNITURE.map((name) => loader.loadAsync(`/assets/office/${name}.glb`))),
+      Promise.all(CARS.map((name) => loader.loadAsync(`/assets/cars/${name}.glb`))),
     ]);
     return new View3D(container, roster, {
       people: Object.fromEntries(cast.map((name, i) => [name, people[i]])),
-      models: Object.fromEntries(FURNITURE.map((name, i) => [name, furniture[i].scene])),
+      models: Object.fromEntries([...FURNITURE.map((name, i) => [name, furniture[i].scene]), ...CARS.map((name, i) => [name, cars[i].scene])]),
     });
   }
 
@@ -87,7 +93,9 @@ export class View3D {
     this.effects = [];
     this.mats = new Map();
     this.textures = new Map();
-    this.center = new THREE.Vector3(this.FW / 2, this.H / 2 + 0.8, this.FD / 2);
+    this.npcs = [];
+    this.traffic = [];
+    this.center = new THREE.Vector3(this.FW / 2, (this.H - this.FH) / 2 + 0.6, this.FD / 2 + 1.5);
     this.userMoved = false;
     this.fitDist = 40;
 
@@ -123,7 +131,11 @@ export class View3D {
     this.buildLights();
     this.buildSite();
     this.floors.forEach((f, i) => this.buildFloor(i, f));
+    this.buildBasement();
     this.buildRoof();
+    this.buildElevator();
+    this.buildStairs();
+    this.buildPeopleOfTheHouse();
 
     this.clock = new THREE.Clock();
     this.resize();
@@ -150,11 +162,11 @@ export class View3D {
   }
 
   // Đặt một món nội thất, canh tâm theo mặt bằng và đặt đáy xuống sàn. tint = { tênVậtLiệu: màu }.
-  prop(name, x, y, z, { ry = 0, scale = KS, tint, parent = this.scene } = {}) {
+  prop(name, x, y, z, { ry = 0, scale = KS, length, tint, parent = this.scene } = {}) {
     const src = this.assets.models[name];
     if (!src.userData.fit) {
       const bb = new THREE.Box3().setFromObject(src);
-      src.userData.fit = { cx: (bb.min.x + bb.max.x) / 2, cz: (bb.min.z + bb.max.z) / 2, y: bb.min.y };
+      src.userData.fit = { cx: (bb.min.x + bb.max.x) / 2, cz: (bb.min.z + bb.max.z) / 2, y: bb.min.y, len: Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) };
     }
     const fit = src.userData.fit;
     const colors = { wood: '#dcb98f', woodDark: '#b98c60', ...tint }; // gỗ ấm hơn màu gốc của bộ mô hình
@@ -172,7 +184,7 @@ export class View3D {
     o.add(inner);
     o.position.set(x, y, z);
     o.rotation.y = ry;
-    o.scale.setScalar(scale);
+    o.scale.setScalar(length ? length / fit.len : scale); // length: phóng theo chiều dài mong muốn (dùng cho xe)
     parent.add(o);
     return o;
   }
@@ -275,15 +287,66 @@ export class View3D {
     }
   }
 
+  flag(x, z, color) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 4.4, 8), this.mat('#c9ced3', { metalness: 0.6, roughness: 0.3 }));
+    pole.position.set(x, 2.2, z);
+    pole.castShadow = true;
+    this.scene.add(pole);
+    this.box(1.0, 0.6, 0.02, color, x + 0.54, 4.0, z);
+  }
+
+  // Khuôn viên: quảng trường ngang tầng trệt, sân trũng trước hầm xe, cầu dẫn vào sảnh, ram dốc, đường phố.
   buildSite() {
-    const { FW, FD } = this;
-    // Quảng trường trước tòa nhà.
-    this.box(FW + 22, 0.4, FD + 20, '#d9d2c4', FW / 2, -0.5, FD / 2 + 3);
-    this.box(FW + 4, 0.1, 9, '#ebe5d8', FW / 2, -0.26, FD + 4.6);
-    this.box(FW + 1.2, 0.16, 1.2, '#f4efe4', FW / 2, -0.22, FD + 0.9);          // bậc thềm
-    this.box(3.2, 0.03, 8, this.brand.primary, FW / 2, -0.2, FD + 5.2, this.scene, { noShadow: true }); // thảm lối vào
-    for (const x of [-4.5, -2.2, FW + 2.2, FW + 4.5]) for (const z of [FD + 2.5, FD + 6.5]) this.tree(x, z, 1 + hash(x + ':' + z, 4) * 0.12);
-    for (const x of [2.5, FW - 2.5]) this.tree(x, FD + 8.2, 0.9);
+    const { FW, FD, FH, brand } = this;
+    const yB = -FH;                       // cao độ sàn hầm
+    const zCourt = FD + 6.3;              // mép ngoài sân trũng
+    const zStreet = FD + 12.6;            // mép đường
+    const rx0 = FW - 4.7, rx1 = FW - 0.5; // ram dốc nằm giữa hai mốc này
+    const ground = (x0, x1, z0, z1) => this.box(x1 - x0, FH + 0.48, z1 - z0, '#d9d2c4', (x0 + x1) / 2, (yB - 0.5 - 0.02) / 2, (z0 + z1) / 2);
+    ground(-11, -0.47, -7, zStreet);
+    ground(FW + 0.47, FW + 11, -7, zStreet);
+    ground(-0.47, FW + 0.47, -7, -0.25);
+    ground(-0.47, rx0, zCourt, zStreet);
+    ground(rx1, FW + 0.47, zCourt, zStreet);
+    // Sân trũng trước hầm và ram dốc từ đường xuống.
+    this.box(FW + 0.94, 0.3, zCourt - FD - 0.2, '#63666d', FW / 2, yB - 0.15, (FD + 0.2 + zCourt) / 2);
+    const dz = zStreet - zCourt, dy = FH - 0.02;
+    const ramp = this.box(rx1 - rx0, 0.22, Math.hypot(dz, dy), '#6e7178', (rx0 + rx1) / 2, yB + dy / 2 - 0.11, (zCourt + zStreet) / 2);
+    ramp.rotation.x = -Math.atan2(dy, dz);
+    for (let i = 0; i < 5; i++) { // vạch mũi tên trên ram
+      const k = (i + 0.5) / 5;
+      const stripe = this.box(0.9, 0.02, 0.28, '#f2c14e', (rx0 + rx1) / 2, yB + dy * k + 0.03, zCourt + dz * k, this.scene, { noShadow: true });
+      stripe.rotation.x = ramp.rotation.x;
+    }
+    // Cầu dẫn từ quảng trường vào sảnh, trải thảm màu thương hiệu.
+    this.box(3.6, 0.3, zCourt - FD - 0.2, '#ebe5d8', FW / 2, -0.17, (FD + 0.2 + zCourt) / 2);
+    this.box(2.6, 0.02, zCourt - FD + 3.2, brand.primary, FW / 2, -0.005, (FD + zCourt + 3.4) / 2, this.scene, { noShadow: true });
+    for (const dx of [-1.77, 1.77]) this.box(0.05, 0.55, zCourt - FD - 0.2, null, FW / 2 + dx, 0.26, (FD + 0.2 + zCourt) / 2, this.scene, { material: this.glass, transparent: true });
+    for (const z of [FD + 2.2, FD + 4.6]) this.box(0.4, FH - 0.3, 0.4, '#f7f4ee', FW / 2, yB + (FH - 0.3) / 2, z);
+    // Chốt bảo vệ và barie ở chân ram.
+    const bx = rx0 - 0.9, bz = zCourt - 0.9;
+    this.box(1.2, 1.5, 1.2, '#f4f1ea', bx, yB + 0.75, bz);
+    this.box(1.24, 0.6, 0.9, null, bx, yB + 1.1, bz + 0.2, this.scene, { material: this.glass, transparent: true });
+    this.box(1.5, 0.12, 1.5, brand.primary, bx, yB + 1.56, bz);
+    this.box(0.16, 1.0, 0.16, '#f2c14e', rx0 + 0.15, yB + 0.5, zCourt - 0.5);
+    for (let i = 0; i < 6; i++) this.box(0.6, 0.09, 0.09, i % 2 ? '#ffffff' : '#e0352b', rx0 + 0.5 + i * 0.6, yB + 0.95, zCourt - 0.5, this.scene, { noShadow: true });
+    // Đường phố trước trụ sở.
+    this.box(FW + 22, 0.1, 4.2, '#4e5157', FW / 2, -0.07, zStreet + 2.1);
+    for (let x = -10; x < FW + 11; x += 2.4) this.box(1.2, 0.012, 0.1, '#f3f0e6', x, -0.014, zStreet + 2.1, this.scene, { noShadow: true });
+    this.box(FW + 22, 0.24, 1.6, '#d9d2c4', FW / 2, -0.14, zStreet + 5.0);
+    // Xe chạy trên đường và một taxi chờ khách trước cầu dẫn.
+    const lanes = [[zStreet + 1.1, 1, 'sedan', -6], [zStreet + 1.1, 1, 'van', 12], [zStreet + 3.1, -1, 'suv', 4], [zStreet + 3.1, -1, 'hatchback-sports', 22]];
+    for (const [z, dir, model, x] of lanes) {
+      const car = this.prop(model, x, -0.02, z, { length: 3.4, ry: dir * Math.PI / 2 });
+      this.traffic.push({ car, dir, speed: 3.2 + Math.random() * 1.6 });
+    }
+    // Cây, cột cờ.
+    for (const x of [-4.5, -2.2, FW + 2.2, FW + 4.5]) for (const z of [FD + 2.5, FD + 8]) this.tree(x, z, 1 + hash(x + ':' + z, 4) * 0.12);
+    for (const x of [1.8, 9.8]) this.tree(x, zCourt + 5.2, 0.9);
+    this.hydrant(FW + 2.4, zStreet - 0.7);
+    this.hydrant(-2.4, zStreet - 0.7);
+    this.board('ĐIỂM TẬP KẾT', -5.6, zCourt + 4.2, '#1fa35b');
+    [brand.primary, brand.accent, '#ffffff'].forEach((c, i) => this.flag(0.5 + i * 1.3, zCourt + 0.9, c));
     // Vài khối nhà xa phía sau cho cảm giác khu trung tâm.
     this.skyline = new THREE.MeshBasicMaterial({ color: '#c9d6e4' });
     [[-9, -12, 6, 16], [-2, -16, 7, 27], [7, -14, 6, 20], [15, -17, 8, 31], [24, -12, 6, 14]].forEach(([x, z, w, h]) => {
@@ -291,6 +354,216 @@ export class View3D {
       m.position.set(x, h / 2 - 0.3, z);
       this.scene.add(m);
     });
+  }
+
+  // Hầm B1: bãi đỗ xe có vạch ô, cột, đèn, biển chỉ dẫn.
+  buildBasement() {
+    const { FW, FD, FH, brand } = this;
+    const y = -FH, wallH = FH - 0.3;
+    this.box(FW + 0.7, 0.3, FD + 0.5, '#8d8f94', FW / 2, y - 0.15, FD / 2 - 0.05);
+    this.box(FW - 0.1, 0.02, FD - 0.2, '#63666d', FW / 2, y + 0.01, FD / 2, this.scene, { noShadow: true });
+    this.box(FW, wallH, 0.2, '#b9b6ae', FW / 2, y + wallH / 2, -0.1);
+    this.box(0.2, wallH, FD, '#b9b6ae', FW + 0.1, y + wallH / 2, FD / 2);
+    this.box(0.24, wallH, FD + 0.2, '#c6c2b8', -0.12, y + wallH / 2, FD / 2);
+    this.box(FW, 0.5, 0.03, '#f2c14e', FW / 2, y + 0.9, 0.012, this.scene, { noShadow: true }); // dải sơn vàng quanh tường
+    // Cửa thang máy xuống hầm.
+    this.box(0.05, 1.7, 1.5, '#8f9aa3', 0.02, y + 0.85, 5.2, this.scene, { mat: { roughness: 0.3, metalness: 0.7 } });
+    this.box(0.06, 1.7, 0.03, '#59636b', 0.03, y + 0.85, 5.2);
+    // Ô đỗ xe sát tường sau, xe quay đầu ra lối chạy.
+    const cars = ['suv-luxury', 'sedan', 'hatchback-sports', null, 'van', 'sedan-sports', 'suv'];
+    const step = (FW - 1.6) / cars.length;
+    for (let i = 0; i <= cars.length; i++) this.box(0.07, 0.012, 3.6, '#f3f0e6', 0.9 + i * step, y + 0.025, 2.1, this.scene, { noShadow: true });
+    cars.forEach((model, i) => {
+      const x = 0.9 + (i + 0.5) * step;
+      if (model) this.prop(model, x, y + 0.02, 2.0, { length: 3.3 });
+      this.box(1.2, 0.012, 0.07, '#f3f0e6', x, y + 0.025, 3.9, this.scene, { noShadow: true });
+    });
+    const ceo = this.text('CEO', { w: 1.2, h: 0.4, color: '#f2c14e' });
+    ceo.rotation.x = -Math.PI / 2;
+    ceo.position.set(0.9 + 0.5 * step, y + 0.03, 4.3);
+    this.scene.add(ceo);
+    // Cột có sơn cảnh báo, đèn trần, biển chỉ dẫn.
+    for (const x of [FW * 0.3, FW * 0.62]) {
+      this.box(0.4, wallH, 0.4, '#d6d3cb', x, y + wallH / 2, 4.6);
+      this.box(0.42, 0.5, 0.42, '#f2c14e', x, y + 0.25, 4.6);
+      this.box(0.43, 0.1, 0.43, '#2a2a30', x, y + 0.3, 4.6);
+    }
+    for (const x of [FW * 0.2, FW * 0.5, FW * 0.8]) {
+      this.box(2.2, 0.05, 0.16, null, x, y + wallH - 0.04, 3.2, this.scene, { material: new THREE.MeshBasicMaterial({ color: '#fff6dc', toneMapped: false }), noShadow: true });
+    }
+    this.box(FW - 0.8, 0.06, 0.06, '#c92a22', FW / 2, y + wallH - 0.12, 4.9, this.scene, { noShadow: true }); // ống chữa cháy
+    for (let x = 1.6; x < FW - 0.6; x += 2.6) this.cyl(0.05, 0.06, '#c9ced3', x, y + wallH - 0.18, 4.9, { metalness: 0.7, roughness: 0.3 });
+    for (const x of [FW * 0.3, FW * 0.62]) this.extinguisher(x + 0.3, y, 4.6);
+    this.box(0.07, 0.72, 0.56, '#d62a22', 0.04, y + 0.95, 3.9, this.scene, { mat: { roughness: 0.4 } });
+    this.exitSign(FW - 1.1, y + wallH - 0.34, FD - 0.5);
+    this.box(0.16, 0.12, 0.26, '#f4f1ea', FW - 0.5, y + wallH - 0.2, 0.3);
+    this.box(4.4, 0.42, 0.08, '#24449c', 3.2, y + wallH - 0.36, FD - 0.1);
+    const sign = this.text('B1  ·  HẦM ĐỖ XE', { w: 4.0, h: 0.26, color: '#ffffff' });
+    sign.position.set(3.2, y + wallH - 0.36, FD - 0.055);
+    this.scene.add(sign);
+    this.box(0.7, 0.7, 0.06, '#24449c', FW - 1.2, y + 1.7, 0.04);
+    const pSign = this.text('P', { w: 0.5, h: 0.5, color: '#ffffff' });
+    pSign.position.set(FW - 1.2 + 0.06, y + 1.7, 0.08);
+    this.scene.add(pSign);
+    const lamp = new THREE.PointLight('#fff1d0', 0, 18, 1.1);
+    lamp.position.set(FW / 2, y + wallH - 0.4, FD / 2 + 1);
+    this.scene.add(lamp);
+    this.lamps.push(lamp);
+  }
+
+  // Người của tòa nhà (không phải subagent): lễ tân sau quầy, bảo vệ ở sảnh và ở chốt hầm xe.
+  buildPeopleOfTheHouse() {
+    const { FW, FD, FH } = this;
+    const lobby = Math.max(0, this.floors.findIndex((f) => f.kind === 'lobby')) * FH;
+    const add = (def, name, x, y, z, heading, gestures) => {
+      const body = this.buildCharacter(def);
+      body.g.position.set(x, y, z);
+      body.g.rotation.y = heading;
+      body.mixer.setTime(Math.random() * 3);
+      const label = this.label('name3', esc(name));
+      this.npcs.push({ body, heading, gestures, next: 3 + Math.random() * 8, until: 0, label, pos: new THREE.Vector3(x, y, z + 0.12), phase: Math.random() * 6 });
+    };
+    add({ id: 'receptionist', model: 'female-b', gender: 'f', slot: 0, color: this.brand.accent, hair: '#3d2b22', skin: '#f2c8a2' }, 'Lễ tân', 6.2, lobby, 1.75, 0, ['interact-right', 'emote-yes']);
+    add({ id: 'guard-lobby', model: 'male-c', slot: 0, color: '#24449c' }, 'Bảo vệ', 1.9, lobby, 4.0, 0.9, ['emote-yes']);
+    const canteen = this.floors.findIndex((f) => f.kind === 'canteen');
+    if (canteen >= 0) add({ id: 'chef', model: 'female-e', raw: true, slot: 0, color: '#ffffff' }, 'Bếp', 6.9, canteen * FH, 0.6, 0, ['interact-right', 'emote-yes']);
+    add({ id: 'guard-parking', model: 'male-c', slot: 0, color: '#24449c' }, 'Bảo vệ', FW - 6.9, -FH, FD + 5.2, 0.5, ['interact-right']);
+  }
+
+  // ---- Phòng cháy chữa cháy ---------------------------------------------------------
+  cyl(r, h, color, x, y, z, opts) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 14), this.mat(color, opts));
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    this.scene.add(m);
+    return m;
+  }
+
+  extinguisher(x, y, z) {
+    this.cyl(0.075, 0.36, '#d62a22', x, y + 0.18, z, { roughness: 0.4 });
+    this.cyl(0.03, 0.08, '#2a2a30', x, y + 0.4, z);
+    this.box(0.1, 0.03, 0.03, '#2a2a30', x + 0.05, y + 0.43, z);
+  }
+
+  hydrant(x, z) {
+    this.cyl(0.13, 0.6, '#d62a22', x, 0.3, z, { roughness: 0.4 });
+    this.cyl(0.17, 0.07, '#b71f19', x, 0.63, z);
+    this.box(0.5, 0.11, 0.11, '#b71f19', x, 0.4, z);
+  }
+
+  board(textStr, x, z, color) {
+    this.cyl(0.035, 2.0, '#c9ced3', x, 1.0, z, { metalness: 0.6, roughness: 0.3 });
+    this.box(2.3, 0.6, 0.05, color, x, 2.1, z);
+    const t = this.text(textStr, { w: 2.1, h: 0.36, color: '#ffffff' });
+    t.position.set(x, 2.1, z + 0.03);
+    this.scene.add(t);
+  }
+
+  exitSign(x, y, z) {
+    this.box(0.78, 0.26, 0.05, null, x, y, z, this.scene, { material: new THREE.MeshBasicMaterial({ color: '#1fa35b', toneMapped: false }), noShadow: true });
+    const t = this.text('EXIT', { w: 0.62, h: 0.2, color: '#ffffff' });
+    t.position.set(x + 0.06, y, z + 0.03);
+    this.scene.add(t);
+  }
+
+  // Bộ PCCC của một tầng: tủ vòi và bình chữa cháy cạnh thang máy, chuông báo, đường ống sprinkler, biển thoát hiểm.
+  fireKit(y, wallH) {
+    const { FW, FD } = this;
+    this.box(0.07, 0.72, 0.56, '#d62a22', 0.04, y + 0.95, 3.75, this.scene, { mat: { roughness: 0.4 } });
+    this.box(0.02, 0.2, 0.36, '#ffffff', 0.08, y + 1.08, 3.75, this.scene, { noShadow: true });
+    this.extinguisher(0.2, y, 4.2);
+    this.extinguisher(0.2, y, 4.42);
+    const bell = this.cyl(0.1, 0.05, '#d62a22', 0.05, y + 1.95, 3.75);
+    bell.rotation.z = Math.PI / 2;
+    this.box(FW - 0.8, 0.05, 0.05, '#c92a22', FW / 2, y + wallH - 0.1, FD * 0.52, this.scene, { noShadow: true });
+    for (let x = 1.6; x < FW - 0.6; x += 2.6) this.cyl(0.05, 0.06, '#c9ced3', x, y + wallH - 0.15, FD * 0.52, { metalness: 0.7, roughness: 0.3 });
+    this.exitSign(FW - 1.1, y + wallH - 0.34, FD - 0.5);
+  }
+
+  // ---- Thang máy kính ở góc trước bên trái, chạy thật giữa các tầng -----------------------
+  buildElevator() {
+    const { FD, FH, H, brand } = this;
+    const cx = -1.0, cz = FD - 0.95, w = 1.36;
+    const steel = '#8f9aa3';
+    for (const dx of [-w / 2, w / 2]) for (const dz of [-w / 2, w / 2]) this.box(0.09, H + 0.5, 0.09, steel, cx + dx, (H + 0.5) / 2, cz + dz, this.scene, { mat: { metalness: 0.6, roughness: 0.35 } });
+    for (let i = 0; i <= this.floors.length; i++) {
+      const y = i * FH - (i ? 0.15 : -0.04);
+      this.box(w + 0.09, 0.07, 0.07, steel, cx, y, cz + w / 2);
+      this.box(w + 0.09, 0.07, 0.07, steel, cx, y, cz - w / 2);
+      this.box(0.07, 0.07, w + 0.09, steel, cx - w / 2, y, cz);
+      this.box(0.07, 0.07, w + 0.09, steel, cx + w / 2, y, cz);
+    }
+    this.box(w, H + 0.3, 0.03, null, cx, (H + 0.3) / 2, cz + w / 2, this.scene, { material: this.glass, transparent: true });
+    this.box(0.03, H + 0.3, w, null, cx - w / 2, (H + 0.3) / 2, cz, this.scene, { material: this.glass, transparent: true });
+    this.box(w + 0.3, 0.5, w + 0.3, '#d7d2c7', cx, H + 0.75, cz);                 // buồng máy trên mái
+    this.box(w + 0.34, 0.08, w + 0.34, brand.primary, cx, H + 1.04, cz);
+    // Cabin: sàn, trần có đèn, vách sau màu thương hiệu, tay vịn.
+    const cabin = new THREE.Group();
+    this.box(w - 0.2, 0.08, w - 0.2, '#59636b', 0, 0.04, 0, cabin);
+    this.box(w - 0.2, 0.08, w - 0.2, '#e9edf0', 0, 2.2, 0, cabin);
+    this.box(w - 0.5, 0.03, w - 0.5, null, 0, 2.15, 0, cabin, { material: new THREE.MeshBasicMaterial({ color: '#fff3d6', toneMapped: false }), noShadow: true });
+    this.box(0.05, 2.1, w - 0.2, brand.primary, w / 2 - 0.13, 1.1, 0, cabin);
+    this.box(w - 0.2, 2.1, 0.05, '#e9edf0', 0, 1.1, -w / 2 + 0.13, cabin);
+    this.box(w - 0.3, 0.05, 0.05, '#c9ced3', 0, 1.0, w / 2 - 0.2, cabin, { mat: { metalness: 0.7, roughness: 0.3 } });
+    const light = new THREE.PointLight('#ffe9c0', 0.6, 4, 1.5);
+    light.position.set(0, 1.9, 0);
+    cabin.add(light);
+    cabin.position.set(cx, 0, cz);
+    this.scene.add(cabin);
+    this.lift = { cabin, y: 0, queue: [], wait: 2, idle: 6 };
+  }
+
+  // Gọi thang: thang tới tầng đón rồi chạy tới tầng đích.
+  callLift(fromFloor, toFloor) {
+    if (!this.lift || fromFloor === toFloor) return;
+    const q = this.lift.queue;
+    if (q.length < 6) q.push(fromFloor * this.FH, toFloor * this.FH);
+  }
+
+  moveLift(dt) {
+    const L = this.lift;
+    if (!L) return;
+    if (L.wait > 0) { L.wait -= dt; return; }
+    if (!L.queue.length) { // rảnh thì thỉnh thoảng tự chạy một chuyến
+      L.idle -= dt;
+      if (L.idle < 0) { L.idle = 8 + Math.random() * 10; L.queue.push(Math.floor(Math.random() * this.floors.length) * this.FH); }
+      return;
+    }
+    const target = L.queue[0], d = target - L.y;
+    const step = 3.4 * dt;
+    if (Math.abs(d) <= step) { L.y = target; L.queue.shift(); L.wait = 1.1; }
+    else L.y += Math.sign(d) * step;
+    L.cabin.position.y = L.y;
+  }
+
+  // ---- Thang bộ thoát hiểm bằng thép ở hông phải ------------------------------------------
+  buildStairs() {
+    const { FW, FH } = this;
+    const x = FW + 1.02, zA = 5.3, zB = 1.5, wide = 1.1;
+    const steel = '#7d858c', tread = '#a7b0b7';
+    const n = this.floors.length;
+    for (let i = 0; i < n; i++) {
+      const y0 = i * FH, y1 = y0 + FH;
+      const from = i % 2 ? zB : zA, to = i % 2 ? zA : zB;
+      const len = Math.hypot(to - from, FH), ang = Math.atan2(FH, Math.abs(to - from)) * (to > from ? -1 : 1);
+      for (const dx of [-wide / 2, wide / 2]) { // cốn thang và tay vịn
+        const beam = this.box(0.05, 0.16, len, steel, x + dx, (y0 + y1) / 2 - 0.04, (from + to) / 2);
+        beam.rotation.x = ang;
+        const rail = this.box(0.035, 0.035, len, steel, x + dx, (y0 + y1) / 2 + 0.85, (from + to) / 2);
+        rail.rotation.x = ang;
+      }
+      for (let k = 1; k <= 9; k++) { // bậc thang
+        const t = k / 10;
+        this.box(wide, 0.045, 0.34, tread, x, y0 + FH * t, from + (to - from) * t);
+      }
+      // Chiếu nghỉ ở đầu trên của vế thang, nối vào sàn tầng.
+      const lz = to + (to > from ? 0.55 : -0.55);
+      this.box(wide + 0.3, 0.07, 1.1, tread, x - 0.12, y1 - 0.02, lz);
+      this.box(0.035, 0.9, 1.1, steel, x + wide / 2, y1 + 0.45, lz);
+      this.box(wide, 0.035, 0.035, steel, x, y1 + 0.88, lz + (to > from ? 0.55 : -0.55));
+      for (const dz of [-0.5, 0.5]) this.box(0.05, y1, 0.05, steel, x + wide / 2, y1 / 2, lz + dz);
+    }
+    this.box(wide + 0.3, 0.07, 1.1, tread, x - 0.12, 0.02, zA + 0.55); // chiếu tới ở mặt đất
   }
 
   buildFloor(i, f) {
@@ -324,6 +597,12 @@ export class View3D {
     this.box(0.06, 0.08, 1.7, '#59636b', 0.03, y + 1.75, 2.4);
     this.box(0.03, 0.1, 0.22, null, 0.03, y + 1.95, 2.4, this.scene, { material: new THREE.MeshBasicMaterial({ color: brand.accent, toneMapped: false }) });
 
+    this.box(0.02, 0.34, 0.5, '#ffffff', 0.014, y + 1.55, 4.7, this.scene, { noShadow: true });
+    const wc = this.text('WC', { w: 0.42, h: 0.24, color: '#3f362a' });
+    wc.rotation.y = Math.PI / 2;
+    wc.position.set(0.03, y + 1.55, 4.7);
+    this.scene.add(wc);
+    this.fireKit(y, wallH);
     const lamp = new THREE.PointLight('#ffd9a8', 0, 16, 1.2);
     lamp.position.set(FW / 2, y + wallH - 0.3, FD / 2 + 0.5);
     this.scene.add(lamp);
@@ -349,6 +628,17 @@ export class View3D {
       lounge(3.0, 4.6);
       this.prop('pottedPlant', FW - 0.8, y, 0.7);
       this.prop('coatRackStanding', 0.9, y, 5.6);
+      // Cổng kiểm soát ra vào trước thang máy.
+      for (const z of [1.5, 2.4, 3.3]) {
+        this.box(0.9, 0.62, 0.22, '#dfe5e8', 1.25, y + 0.31, z, this.scene, { mat: { roughness: 0.3, metalness: 0.5 } });
+        this.box(0.3, 0.04, 0.24, brand.accent, 1.5, y + 0.64, z, this.scene, { noShadow: true });
+      }
+      for (const z of [1.95, 2.85]) this.box(0.04, 0.4, 0.5, null, 1.25, y + 0.42, z, this.scene, { material: this.glass, transparent: true });
+      // Tủ trung tâm báo cháy cạnh chốt bảo vệ, camera an ninh ở góc trần.
+      this.box(0.06, 0.6, 0.5, '#c9ced3', 0.04, y + 1.25, 5.6, this.scene, { mat: { metalness: 0.5, roughness: 0.4 } });
+      this.box(0.02, 0.12, 0.3, '#d62a22', 0.08, y + 1.42, 5.6, this.scene, { noShadow: true });
+      this.box(0.16, 0.12, 0.26, '#f4f1ea', FW - 0.5, y + wallH - 0.2, 0.3);
+      this.box(0.08, 0.08, 0.08, '#2a2a30', FW - 0.5, y + wallH - 0.22, 0.46);
     } else if (f.dept === 'executive') {
       // Tầng điều hành: tường gỗ với biển công ty sau bàn CEO, tủ sách, khu tiếp khách, bàn họp.
       this.box(6.4, 2.3, 0.14, '#9c7a55', FW / 2, y + 1.15, 0.16);
@@ -358,23 +648,287 @@ export class View3D {
       this.prop('pottedPlant', 4.3, y, 0.7);
       this.prop('pottedPlant', FW - 4.3, y, 0.7);
       lounge(13.2, 4.4);
-      this.prop('tableRound', 3.0, y, 4.9);
-      for (const [dx, dz] of [[-0.9, 0], [0.9, 0], [0, 0.9], [0, -0.9]]) this.prop('stoolBar', 3.0 + dx, y, 4.9 + dz, { scale: KS * 0.85 });
+      // Phòng họp hội đồng vách kính, có máy chiếu.
+      this.glassRoom(0.8, 4.0, 5.7, 6.7, y);
+      this.meetingTable(3.3, y, 5.35, 3.2, 6, color);
+      this.presentation(0.1, y, 5.35, Math.PI / 2, 'dash', 'BÁO CÁO QUÝ', color, 3.3);
+    } else if (f.kind === 'canteen') {
+      this.furnishCanteen(y);
+    } else if (f.kind === 'meeting') {
+      this.furnishMeeting(y);
     } else {
-      // Tầng phòng ban: tủ sách, màn hình số liệu, bàn họp nhanh, góc tiếp khách, quầy cà phê.
-      this.prop('bookcaseClosedWide', 1.4, y, 0.55);
-      this.prop('bookcaseOpen', 2.75, y, 0.55);
-      this.prop('sideTableDrawers', FW / 2, y, 0.55);
-      this.prop('televisionModern', FW / 2, y + this.topOf('sideTableDrawers'), 0.55, { scale: KS * 1.2 });
-      this.prop('pottedPlant', 3.7, y, 0.7);
-      this.prop('pottedPlant', FW - 0.8, y, 0.7);
-      this.prop('tableRound', 2.2, y, 5.2);
-      for (const [dx, dz] of [[-0.85, 0], [0.85, 0], [0, 0.85]]) this.prop('stoolBar', 2.2 + dx, y, 5.2 + dz, { scale: KS * 0.85 });
+      // Tầng phòng ban: góc tiếp khách chung, phần còn lại bố trí theo đặc thù công việc của phòng.
       lounge(13.4, 4.4);
-      this.prop('kitchenBar', 10.6, y, 0.55, { tint: { woodDark: color } });
-      this.prop('kitchenCoffeeMachine', 10.6, y + this.topOf('kitchenBar'), 0.55);
-      this.prop('trashcan', 9.8, y, 0.55, { scale: KS * 0.7 });
+      this.prop('pottedPlant', FW - 0.8, y, 0.7);
+      (this['furnish_' + f.dept] || this.furnish_default).call(this, y, color, wallH);
     }
+  }
+
+  // ---- Đồ dùng chung cho các kiểu tầng ------------------------------------------------
+  chairAt(model, x, y, z, faceX, faceZ, tint) {
+    return this.prop(model, x, y, z, { ry: Math.atan2(faceX - x, faceZ - z), tint });
+  }
+
+  // Bàn họp dài với ghế hai bên.
+  meetingTable(cx, y, cz, len, seats, color) {
+    const t = this.prop('table', cx, y, cz);
+    t.scale.set(len / 0.84, KS, KS * 1.25);
+    const n = seats / 2;
+    for (let i = 0; i < n; i++) {
+      const x = cx - len / 2 + len * (i + 0.5) / n;
+      for (const side of [-1, 1]) this.chairAt('chairModernCushion', x, y, cz + side * 0.95, x, cz, { carpetBlue: color });
+    }
+    this.prop('laptop', cx - 0.5, y + this.topOf('table'), cz, { ry: Math.PI / 2, scale: KS * 0.8 });
+  }
+
+  // Phòng vách kính: kính ba mặt, mở về phía mặt tiền để nhìn vào.
+  glassRoom(x0, z0, x1, z1, y, h = 2.25) {
+    const steel = '#8f9aa3', w = x1 - x0, d = z1 - z0;
+    if (z0 > 0.4) this.box(w, h, 0.04, null, (x0 + x1) / 2, y + h / 2, z0, this.scene, { material: this.glass, transparent: true });
+    for (const x of [x0, x1]) {
+      this.box(0.04, h, d, null, x, y + h / 2, (z0 + z1) / 2, this.scene, { material: this.glass, transparent: true });
+      for (const z of [z0, z1]) this.box(0.08, h, 0.08, steel, x, y + h / 2, z);
+      this.box(0.08, 0.06, d, steel, x, y + h, (z0 + z1) / 2);
+    }
+    for (const z of [z0, z1]) this.box(w, 0.06, 0.08, steel, (x0 + x1) / 2, y + h, z);
+  }
+
+  // Trang chiếu vẽ sẵn cho màn hình và máy chiếu.
+  slide(kind, title, color) {
+    const c = document.createElement('canvas');
+    c.width = 640; c.height = 400;
+    const g = c.getContext('2d');
+    g.fillStyle = kind === 'dash' ? '#141a2e' : '#ffffff';
+    g.fillRect(0, 0, 640, 400);
+    g.fillStyle = color;
+    g.fillRect(0, 0, 640, 14);
+    g.fillStyle = kind === 'dash' ? '#ffffff' : '#241f45';
+    g.font = '800 40px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    g.fillText(title, 28, 70);
+    const tones = [color, '#f2b134', '#3f9a5a', '#7c5cbf', '#e4572e', '#3273c4'];
+    if (kind === 'bars') {
+      [0.45, 0.7, 0.55, 0.9, 0.75, 1].forEach((v, i) => { g.fillStyle = tones[i % 2 ? 1 : 0]; g.fillRect(40 + i * 96, 360 - v * 250, 64, v * 250); });
+    } else if (kind === 'kanban') {
+      for (let col = 0; col < 3; col++) {
+        g.fillStyle = '#eeeaf6'; g.fillRect(28 + col * 200, 100, 184, 280);
+        for (let r = 0; r < 3 - col % 2; r++) { g.fillStyle = tones[(col * 2 + r) % 6]; g.fillRect(42 + col * 200, 116 + r * 86, 156, 68); }
+      }
+    } else if (kind === 'menu') {
+      for (let r = 0; r < 5; r++) { g.fillStyle = tones[r % 6]; g.fillRect(34, 104 + r * 56, 30, 30); g.fillStyle = '#55507a'; g.fillRect(84, 112 + r * 56, 300 + (r % 3) * 60, 14); g.fillRect(520, 112 + r * 56, 80, 14); }
+    } else { // dash: đường xu hướng và vài thẻ số
+      g.strokeStyle = color; g.lineWidth = 8; g.beginPath();
+      [300, 250, 270, 200, 220, 150, 120].forEach((yy, i) => (i ? g.lineTo(40 + i * 60, yy) : g.moveTo(40, yy)));
+      g.stroke();
+      for (let r = 0; r < 3; r++) { g.fillStyle = tones[r + 1]; g.fillRect(450, 110 + r * 90, 160, 70); }
+      g.fillStyle = '#2a3354'; g.fillRect(40, 330, 380, 40);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return tex;
+  }
+
+  // Màn hình hoặc bảng dựng đứng, mặt hướng theo ry (0 = quay ra mặt tiền).
+  screen(x, y, z, w, ry, tex, frame = '#2b2e35') {
+    const g = new THREE.Group();
+    g.position.set(x, y, z);
+    g.rotation.y = ry;
+    this.scene.add(g);
+    const h = w * 0.625;
+    this.box(w + 0.1, h + 0.1, 0.05, frame, 0, 0, 0, g);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    m.position.z = 0.03;
+    g.add(m);
+    return g;
+  }
+
+  // Bảng đứng trên chân (bảng trắng, bảng tin): đặt giữa phòng mà không cần tường.
+  standBoard(x, y, z, w, tex, frame = '#d9d2c3') {
+    for (const dx of [-w / 2 + 0.1, w / 2 - 0.1]) this.box(0.06, 0.6, 0.4, '#8f9aa3', x + dx, y + 0.3, z);
+    this.screen(x, y + 0.6 + w * 0.3125 + 0.05, z, w, 0, tex, frame);
+  }
+
+  // Màn chiếu trên tường kèm máy chiếu treo trần và chùm sáng.
+  presentation(x, y, z, ry, kind, title, color, throwDist) {
+    const sy = y + 1.4, wallH = this.FH - 0.3;
+    this.screen(x, sy, z, 1.9, ry, this.slide(kind, title, color), '#f4f1ea');
+    const px = x + Math.sin(ry) * throwDist, pz = z + Math.cos(ry) * throwDist, py = y + wallH - 0.2;
+    this.box(0.34, 0.14, 0.4, '#3a3f47', px, py, pz, this.scene, { mat: { roughness: 0.4, metalness: 0.3 } });
+    this.box(0.05, 0.2, 0.05, '#8f9aa3', px, py + 0.14, pz);
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(0.9, throwDist, 4, 1, true), new THREE.MeshBasicMaterial({ color: '#fff7d6', transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
+    beam.position.set((x + px) / 2, (sy + py) / 2, (z + pz) / 2);
+    beam.lookAt(px, py, pz);
+    beam.rotateX(Math.PI / 2);
+    this.scene.add(beam);
+  }
+
+  rack(x, y, z) {
+    this.box(0.56, 1.7, 0.6, '#2b2f37', x, y + 0.85, z, this.scene, { mat: { roughness: 0.5, metalness: 0.4 } });
+    for (let i = 0; i < 7; i++) {
+      this.box(0.4, 0.035, 0.012, null, x, y + 0.25 + i * 0.2, z + 0.305, this.scene, { material: new THREE.MeshBasicMaterial({ color: i % 3 ? '#6fe39a' : '#5ab0ff', toneMapped: false }), noShadow: true });
+    }
+  }
+
+  coffeeBar(x, y, color) {
+    this.prop('kitchenBar', x, y, 0.55, { tint: { woodDark: color } });
+    this.prop('kitchenCoffeeMachine', x, y + this.topOf('kitchenBar'), 0.55);
+    this.prop('trashcan', x - 0.8, y, 0.55, { scale: KS * 0.7 });
+  }
+
+  // ---- Bố trí riêng từng phòng ban ------------------------------------------------------
+  furnish_default(y, color) {
+    this.prop('bookcaseClosedWide', 1.4, y, 0.55);
+    this.prop('bookcaseOpen', 2.75, y, 0.55);
+    this.coffeeBar(10.6, y, color);
+    this.prop('tableRound', 2.2, y, 5.2);
+    for (const [dx, dz] of [[-0.85, 0], [0.85, 0], [0, 0.85]]) this.prop('stoolBar', 2.2 + dx, y, 5.2 + dz, { scale: KS * 0.85 });
+  }
+
+  // Marketing: bảng ý tưởng, bảng mood, góc brainstorm có máy chiếu, góc chụp hình.
+  furnish_marketing(y, color) {
+    this.standBoard(2.5, y, 0.6, 2.4, this.slide('kanban', 'Ý TƯỞNG CAMPAIGN', color));
+    this.standBoard(8.6, y, 0.6, 2.2, this.slide('bars', 'HIỆU QUẢ KÊNH', color), '#c9a577');
+    this.coffeeBar(11.2, y, color);
+    this.presentation(0.1, y, 5.6, Math.PI / 2, 'bars', 'KẾ HOẠCH CAMPAIGN', color, 3.0);
+    this.prop('rugSquare', 2.5, y + 0.02, 5.6, { scale: KS * 1.5, tint: { carpet: mix('#ffffff', color, 0.45), carpetDarker: mix('#ffffff', color, 0.7) } });
+    for (const z of [5.0, 6.1]) this.chairAt('loungeDesignChair', 3.3, y, z, 0, z, { carpetBlue: color });
+    this.prop('tableCoffee', 2.0, y, 5.6, { ry: Math.PI / 2 });
+    // Góc chụp hình sản phẩm: máy ảnh trên chân, đèn softbox.
+    for (const a of [0, 2.1, 4.2]) { const leg = this.cyl(0.02, 1.0, '#2a2a30', 10.6 + Math.cos(a) * 0.18, y + 0.5, 5.9 + Math.sin(a) * 0.18); leg.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3); }
+    this.box(0.26, 0.18, 0.2, '#2a2a30', 10.6, y + 1.08, 5.9);
+    this.cyl(0.06, 0.1, '#59636b', 10.6, y + 1.08, 5.76).rotation.x = Math.PI / 2;
+    this.cyl(0.03, 1.1, '#8f9aa3', 9.7, y + 0.55, 6.1);
+    this.box(0.42, 0.42, 0.1, null, 9.7, y + 1.2, 6.1, this.scene, { material: new THREE.MeshBasicMaterial({ color: '#fffbe8', toneMapped: false }) });
+  }
+
+  // Sản phẩm & Thiết kế: bảng kanban, kệ mẫu, bàn phác thảo lớn, máy in 3D.
+  furnish_product(y, color) {
+    this.standBoard(2.5, y, 0.6, 2.4, this.slide('kanban', 'LỘ TRÌNH SẢN PHẨM', color));
+    for (const x of [8.4, 9.3]) this.prop('bookcaseOpen', x, y, 0.55);
+    for (const [x, z] of [[8.4, 1.3], [8.9, 1.25]]) this.prop('cardboardBoxClosed', x, y, z);
+    this.prop('sideTableDrawers', 11.0, y, 0.55);
+    const top = y + this.topOf('sideTableDrawers');
+    for (const dx of [-0.24, 0.24]) for (const dz of [-0.2, 0.2]) this.box(0.035, 0.6, 0.035, '#59636b', 11.0 + dx, top + 0.3, 0.55 + dz);
+    this.box(0.56, 0.04, 0.48, '#59636b', 11.0, top + 0.6, 0.55);
+    this.box(0.2, 0.16, 0.2, color, 11.0, top + 0.1, 0.55);
+    const t = this.prop('table', 2.6, y, 5.4);
+    t.scale.set(KS * 1.5, KS, KS * 1.5);
+    const tt = y + this.topOf('table');
+    this.prop('laptop', 2.0, tt, 5.4, { scale: KS * 0.8 });
+    for (const [dx, dz, c] of [[0.5, -0.2, '#ffffff'], [0.9, 0.15, mix('#ffffff', color, 0.4)], [0.3, 0.3, '#fff3c4']]) this.box(0.42, 0.012, 0.3, c, 2.6 + dx, tt + 0.01, 5.4 + dz, this.scene, { noShadow: true });
+    this.prop('books', 3.5, tt, 5.1);
+    for (const [dx, dz] of [[-0.9, 0.95], [0.3, 0.95], [1.5, 0.3]]) this.prop('stoolBar', 2.6 + dx, y, 5.4 + dz, { scale: KS * 0.85, tint: { carpet: color } });
+  }
+
+  // Kỹ thuật & Dữ liệu: tường màn hình giám sát, phòng máy chủ vách kính, bàn đứng.
+  furnish_engineering(y, color) {
+    this.box(3.6, 1.5, 0.1, '#20242c', 2.6, y + 1.2, 0.45);
+    ['HỆ THỐNG', 'LƯU LƯỢNG', 'TRIỂN KHAI'].forEach((t, i) => this.screen(1.45 + i * 1.15, y + 1.2, 0.51, 1.0, 0, this.slide('dash', t, [color, '#3f9a5a', '#f2b134'][i]), '#20242c'));
+    this.glassRoom(8.9, 0.2, 12.1, 1.75, y);
+    for (const x of [9.5, 10.5, 11.5]) this.rack(x, y, 0.8);
+    const t = this.prop('table', 2.4, y, 5.5);
+    t.scale.set(KS * 1.2, KS * 1.55, KS);
+    this.prop('laptop', 2.4, y + this.topOf('table', KS * 1.55), 5.5, { scale: KS * 0.8 });
+    this.standBoard(4.0, y, 6.2, 1.6, this.slide('kanban', 'SPRINT', color));
+    this.prop('kitchenCoffeeMachine', 7.6, y + this.topOf('sideTableDrawers'), 0.55);
+    this.prop('sideTableDrawers', 7.6, y, 0.55);
+  }
+
+  // Kinh doanh & CSKH: bảng doanh số, cồng mừng chốt đơn, phòng tiếp khách vách kính.
+  furnish_sales(y, color) {
+    this.box(2.6, 1.6, 0.1, '#20242c', 2.5, y + 1.2, 0.45);
+    this.screen(2.5, y + 1.2, 0.51, 2.3, 0, this.slide('bars', 'DOANH SỐ THÁNG', color), '#20242c');
+    for (const dx of [-0.45, 0.45]) this.box(0.06, 1.3, 0.06, '#7a5a3a', 9.0 + dx, y + 0.65, 0.7);
+    this.box(1.0, 0.06, 0.06, '#7a5a3a', 9.0, y + 1.3, 0.7);
+    const gong = this.cyl(0.36, 0.05, '#d9a441', 9.0, y + 0.82, 0.7, { metalness: 0.8, roughness: 0.3 });
+    gong.rotation.x = Math.PI / 2;
+    this.coffeeBar(11.2, y, color);
+    this.glassRoom(0.8, 4.2, 4.6, 6.6, y);
+    this.prop('tableRound', 2.7, y, 5.4);
+    for (const [dx, dz] of [[-1.0, 0], [1.0, 0], [0, -0.95]]) this.chairAt('chairCushion', 2.7 + dx, y, 5.4 + dz, 2.7, 5.4, { carpet: color });
+    this.prop('pottedPlant', 4.1, y, 4.6, { scale: KS * 0.8 });
+  }
+
+  // Vận hành: dãy tủ hồ sơ, két sắt, máy photocopy, bảng thông báo, bàn lưu trữ.
+  furnish_operations(y, color) {
+    for (const x of [1.4, 2.95, 4.5]) this.prop('bookcaseClosedWide', x, y, 0.55);
+    this.box(0.8, 1.0, 0.7, '#3a3f47', 8.3, y + 0.5, 0.6, this.scene, { mat: { roughness: 0.4, metalness: 0.5 } });
+    this.cyl(0.1, 0.04, '#c9ced3', 8.3, y + 0.6, 0.97, { metalness: 0.8, roughness: 0.3 }).rotation.x = Math.PI / 2;
+    this.box(0.9, 0.95, 0.7, '#e3e6e8', 9.6, y + 0.475, 0.6);
+    this.box(0.94, 0.08, 0.74, '#59636b', 9.6, y + 0.99, 0.6);
+    this.box(0.5, 0.03, 0.4, '#ffffff', 10.15, y + 0.6, 0.6);
+    this.standBoard(11.5, y, 0.6, 1.6, this.slide('menu', 'THÔNG BÁO', color), '#c9a577');
+    const t = this.prop('table', 2.6, y, 5.4);
+    t.scale.set(KS * 1.4, KS, KS * 1.2);
+    const tt = y + this.topOf('table');
+    for (const [dx, dz] of [[-0.6, 0], [0.1, 0.1]]) this.prop('cardboardBoxClosed', 2.6 + dx, tt, 5.4 + dz);
+    for (const [x, z] of [[1.3, 5.9], [1.75, 5.5], [4.1, 5.9]]) this.prop('cardboardBoxClosed', x, y, z);
+    this.prop('cardboardBoxClosed', 1.5, y + this.topOf('cardboardBoxClosed'), 5.75, { ry: 0.3 });
+    this.prop('books', 3.3, tt, 5.5);
+  }
+
+  // Tầng canteen: bếp sát tường sau, quầy phục vụ, khu bàn ăn, góc cà phê.
+  furnishCanteen(y) {
+    const { FW, brand } = this;
+    const cloth = { carpet: mix('#ffffff', brand.accent, 0.55) };
+    this.prop('kitchenFridgeLarge', 1.3, y, 0.6);
+    this.prop('kitchenSink', 2.35, y, 0.6);
+    this.prop('kitchenStoveElectric', 3.2, y, 0.6);
+    this.prop('kitchenCabinet', 4.05, y, 0.6);
+    this.prop('kitchenMicrowave', 4.05, y + this.topOf('kitchenCabinet'), 0.6);
+    for (let i = 0; i < 5; i++) this.prop('kitchenBar', 5.3 + i * 0.82, y, 1.45, { tint: { woodDark: brand.primary } }); // quầy phục vụ
+    const bar = y + this.topOf('kitchenBar');
+    this.prop('kitchenCoffeeMachine', 5.3, bar, 1.45);
+    this.prop('toaster', 6.1, bar, 1.45);
+    for (let i = 0; i < 5; i++) this.cyl(0.05, 0.1, i % 2 ? brand.accent : '#ffffff', 7.6 + i * 0.16, bar + 0.05, 1.45);
+    for (let i = 0; i < 3; i++) this.box(0.5, 0.03, 0.34, '#d9d2c3', 8.0 + i * 0.05, bar + 0.02 + i * 0.035, 1.75);          // chồng khay
+    this.prop('kitchenFridge', 9.9, y, 0.6);
+    this.prop('kitchenFridge', 10.75, y, 0.6);
+    this.standBoard(12.2, y, 0.6, 1.6, this.slide('menu', 'THỰC ĐƠN HÔM NAY', brand.accent), '#2b2e35');
+    // Khu bàn ăn: hai dãy bàn bốn chỗ.
+    for (const z of [3.5, 5.5]) for (const x of [1.9, 4.5, 7.1, 9.7]) {
+      const t = this.prop('tableCloth', x, y, z, { tint: cloth });
+      t.scale.set(KS * 1.15, KS, KS * 1.15);
+      for (const dx of [-0.45, 0.45]) for (const side of [-1, 1]) this.chairAt('chairCushion', x + dx, y, z + side * 0.8, x + dx, z, cloth);
+      this.cyl(0.05, 0.14, '#4f9a5a', x, y + this.topOf('tableCloth') + 0.07, z);
+    }
+    // Góc cà phê: sofa, bàn trà, bàn đứng.
+    this.prop('rugRound', 13.6, y + 0.02, 4.6, { scale: KS * 1.6, tint: { carpet: mix('#ffffff', brand.primary, 0.5), carpetDarker: mix('#ffffff', brand.primary, 0.75) } });
+    this.prop('loungeSofa', 13.6, y, 2.6, { tint: { carpet: mix('#ffffff', brand.primary, 0.75) } });
+    this.prop('tableCoffee', 13.6, y, 3.7);
+    this.prop('tableRound', 13.6, y, 5.6);
+    for (const [dx, dz] of [[-0.95, 0], [0.95, 0], [0, 0.9]]) this.prop('stoolBar', 13.6 + dx, y, 5.6 + dz, { scale: KS * 0.85, tint: { carpet: brand.accent } });
+    this.prop('pottedPlant', FW - 0.8, y, 0.7);
+    this.prop('pottedPlant', 0.9, y, 6.3);
+    this.prop('trashcan', 11.4, y, 2.2, { scale: KS * 0.8 });
+  }
+
+  // Tầng hội nghị: sảnh chờ, phòng họp lớn và vừa có máy chiếu, hai phòng họp nhỏ, khu đào tạo.
+  furnishMeeting(y) {
+    const { FW, brand } = this;
+    const c1 = brand.primary, c2 = brand.accent;
+    // Sảnh chờ cạnh thang máy, có bảng lịch phòng.
+    this.prop('loungeSofa', 2.2, y, 0.8, { tint: { carpet: mix('#ffffff', c1, 0.75) } });
+    this.prop('tableCoffee', 2.2, y, 1.9);
+    this.prop('pottedPlant', 3.6, y, 0.7);
+    this.standBoard(2.2, y, 6.2, 1.7, this.slide('menu', 'LỊCH PHÒNG HỌP', c1));
+    // Phòng họp lớn 10 chỗ.
+    this.glassRoom(4.4, 0.2, 10.4, 3.6, y);
+    this.meetingTable(7.6, y, 1.9, 4.4, 10, c1);
+    this.presentation(4.5, y, 1.9, Math.PI / 2, 'bars', 'HỌP GIAO BAN', c1, 1.4);
+    // Phòng họp vừa 6 chỗ.
+    this.glassRoom(10.9, 0.2, FW - 0.35, 3.6, y);
+    this.meetingTable(13.0, y, 1.9, 3.0, 6, c2);
+    this.presentation(FW - 0.45, y, 1.9, -Math.PI / 2, 'dash', 'KẾ HOẠCH QUÝ', c2, 1.2);
+    // Hai phòng họp nhỏ 3 chỗ.
+    for (const x0 of [4.4, 7.6]) {
+      this.glassRoom(x0, 4.7, x0 + 2.8, 6.7, y);
+      this.prop('tableRound', x0 + 1.4, y, 5.75, { scale: KS * 0.9 });
+      for (const [dx, dz] of [[-0.85, 0], [0.85, 0], [0, -0.85]]) this.chairAt('chairModernCushion', x0 + 1.4 + dx, y, 5.75 + dz, x0 + 1.4, 5.75, { carpetBlue: c2 });
+    }
+    // Khu đào tạo: ghế xếp hàng nhìn lên màn chiếu.
+    this.presentation(FW - 0.45, y, 5.6, -Math.PI / 2, 'kanban', 'ĐÀO TẠO NỘI BỘ', c1, 2.6);
+    for (const x of [11.4, 12.3, 13.2]) for (const z of [4.9, 5.6, 6.3]) this.chairAt('chairCushion', x, y, z, FW, z, { carpet: mix('#ffffff', c1, 0.6) });
   }
 
   buildRoof() {
@@ -388,8 +942,21 @@ export class View3D {
     // Biển công ty trên mái.
     for (const x of [FW / 2 - 2.6, FW / 2 + 2.6]) this.box(0.14, 1.0, 0.14, '#7d858c', x, H + 0.5, FD - 1.2);
     this.brandSign(FW / 2, H + 1.75, FD - 1.1, 7.2);
-    this.box(2.2, 0.9, 1.6, '#d7d2c7', 3, H + 0.45, 2);
-    this.box(1.4, 0.6, 1.4, '#c9c4b8', FW - 3, H + 0.3, 2.2);
+    this.box(2.2, 0.9, 1.6, '#d7d2c7', 2.4, H + 0.45, 1.6);
+    // Sân đỗ trực thăng và chậu cây trên mái.
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 0.06, 40), this.mat('#6f737a'));
+    pad.position.set(FW - 3.6, H + 0.03, 3.1);
+    pad.receiveShadow = true;
+    this.scene.add(pad);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.07, 8, 48), this.mat('#f2c14e'));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(FW - 3.6, H + 0.07, 3.1);
+    this.scene.add(ring);
+    const hMark = this.text('H', { w: 1.5, h: 1.5, color: '#ffffff' });
+    hMark.rotation.x = -Math.PI / 2;
+    hMark.position.set(FW - 3.6 + 0.35, H + 0.075, 3.1);
+    this.scene.add(hMark);
+    for (const x of [5.2, 6.6, 8.0]) this.prop('pottedPlant', x, H, 1.2, { scale: KS * 1.2 });
   }
 
   // ---- Nhân viên ------------------------------------------------------------------------
@@ -415,7 +982,7 @@ export class View3D {
     const pool = CAST[formal ? 'formal' : 'staff'][gender];
     const model = LOOKS[s.model] ? s.model : pool[(s.slot + hash(s.id, 7)) % pool.length];
     const cells = LOOKS[model];
-    const colors = {
+    const colors = s.raw ? {} : { // raw: giữ trang phục gốc của mô hình (ví dụ áo trắng của đầu bếp)
       shirt: hex(formal ? brand.secondary : brand.primary), pants: hex(brand.trousers), tie: hex(brand.accent),
       shoes: '#2a2a30', belt: '#2a2a30', hair: hex(s.hair), skin: hex(s.skin),
     };
@@ -642,6 +1209,7 @@ export class View3D {
     const p0 = A.body.g.position.clone(); p0.y += 1.1;
     const p1 = new THREE.Vector3(B.deskPos.x, B.y + 0.75, B.deskPos.z - 0.9);
     const sameFloor = A.y === B.y;
+    if (!sameFloor) this.callLift(Math.round(A.y / this.FH), Math.round(B.y / this.FH));
     const out = sameFloor ? 0 : this.FD - Math.min(p0.z, p1.z) + 1.2;
     this.effects.push({
       t: 0, dur: sameFloor ? 1.0 : 1.5,
@@ -755,6 +1323,23 @@ export class View3D {
       if (k >= 1) { e.end(); return false; }
       return true;
     });
+    for (const n of this.npcs) { // lễ tân, bảo vệ: đứng trực, thỉnh thoảng ra hiệu
+      n.next -= dt;
+      if (n.next < 0) {
+        n.next = 7 + Math.random() * 12;
+        n.until = time + 1.6;
+        this.play({ body: n.body }, n.gestures[Math.floor(Math.random() * n.gestures.length)]);
+      } else if (time > n.until) this.play({ body: n.body }, 'idle');
+      n.body.mixer.update(dt);
+      n.body.g.rotation.y = n.heading + Math.sin(time * 0.4 + n.phase) * 0.45;
+    }
+    this.moveLift(dt);
+    const span = this.FW / 2 + 16;
+    for (const t of this.traffic) { // xe chạy ngang qua trước trụ sở
+      t.car.position.x += t.dir * t.speed * dt;
+      if (t.car.position.x > this.FW / 2 + span) t.car.position.x = this.FW / 2 - span;
+      if (t.car.position.x < this.FW / 2 - span) t.car.position.x = this.FW / 2 + span;
+    }
     if (this.goal) { // máy quay lướt mượt tới điểm cần xem
       const k = 1 - Math.exp(-dt * 3.0);
       this.controls.target.lerp(this.goal.target, k);
@@ -776,6 +1361,7 @@ export class View3D {
       if (!a.seated) this.project(head.set(g.x, a.y, g.z + 0.12), a.name, 4);
     }
     for (const v of this.vacant) this.project(v.pos, v.plate);
+    for (const n of this.npcs) { n.label.classList.add('show'); this.project(n.pos, n.label, 4); }
   }
 
   // ---- Khung nhìn ---------------------------------------------------------------------------
@@ -783,7 +1369,8 @@ export class View3D {
   fitCamera(dir) {
     const { FW, FD, H } = this;
     const pts = [];
-    for (const x of [-0.8, FW + 0.8]) for (const z of [-0.4, FD + 1.6]) for (const y of [-0.4, H + 2.9]) pts.push(new THREE.Vector3(x, y, z));
+    for (const x of [-2.0, FW + 2.0]) for (const z of [-0.4, FD + 1.6]) for (const y of [-this.FH - 0.5, H + 2.9]) pts.push(new THREE.Vector3(x, y, z));
+    pts.push(new THREE.Vector3(-0.8, -this.FH - 0.5, FD + 7), new THREE.Vector3(FW + 0.8, -this.FH - 0.5, FD + 7));
     const v = new THREE.Vector3();
     for (let dist = 12; dist < 110; dist += 0.5) {
       this.camera.position.copy(this.center).addScaledVector(dir, dist);
@@ -805,8 +1392,16 @@ export class View3D {
 
   // Lướt tới một tầng: nhận mã phòng ban, mã tầng hoặc số thứ tự tầng.
   focusFloor(id) {
-    const i = typeof id === 'number' ? id : this.floors.findIndex((f) => f.dept === id || f.id === id);
-    if (i < 0 || i >= this.floors.length) return;
+    const i = id === 'parking' ? -1 : typeof id === 'number' ? id : this.floors.findIndex((f) => f.dept === id || f.id === id);
+    if (id !== 'parking' && (i < 0 || i >= this.floors.length)) return;
+    if (id === 'parking') { // hầm nằm dưới mặt đất: đặt máy quay trong sân trũng, nhìn chéo vào dãy xe
+      this.goal = {
+        target: new THREE.Vector3(this.FW * 0.56, -this.FH + 0.9, 2.4),
+        pos: new THREE.Vector3(this.FW * 0.2, -this.FH + 2.1, this.FD + 5.7),
+      };
+      this.userMoved = true;
+      return;
+    }
     const target = new THREE.Vector3(this.FW / 2, i * this.FH + 1.0, this.FD / 2 - 0.4);
     const back = (this.FW / 2 + 1.2) / Math.tan(Math.atan(Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camera.aspect));
     this.goal = { target, pos: target.clone().add(new THREE.Vector3(back * 0.2, 2.3, back)) };

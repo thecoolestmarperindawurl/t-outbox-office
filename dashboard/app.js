@@ -340,7 +340,8 @@ function render() {
     return `<li style="--c:${esc(d.color)}" data-dept="${esc(d.id)}" title="Bấm để xem tầng này"><span class="dept-name">${esc(d.name)}</span>
       <span class="dept-dots">${team.map((s) => `<i class="${s.status}" title="${esc(s.name)}"></i>`).join('')}</span>
       <span class="dept-count">${busy}/${team.length}</span></li>`;
-  }).join('');
+  }).join('') + [['meeting', 'Trung tâm hội nghị'], ['canteen', 'Canteen'], ['lobby', 'Sảnh, lễ tân, bảo vệ'], ['parking', 'Hầm đỗ xe B1']].map(([id, name]) =>
+    `<li class="place" data-dept="${id}" title="Bấm để xem"><span class="dept-name">${name}</span></li>`).join('');
 
   $('feed').innerHTML = S.feed.length ? S.feed.map((f) =>
     `<li class="${esc(f.kind)}"><time>${clock(f.t)}</time><span><b>${esc(f.who)}</b> ${esc(S.hide ? FEED_GENERIC[f.kind] || '' : f.text)}</span></li>`

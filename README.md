@@ -4,9 +4,13 @@ Biến Claude Code thành một tập đoàn. Bạn là sếp, Claude là CEO, c
 
 ![Trụ sở T-outbox](docs/screenshot.png)
 
-![Các tầng phòng ban](docs/floor.png)
+| Tầng phòng ban | Trung tâm hội nghị |
+| --- | --- |
+| ![Các tầng phòng ban](docs/floor.png) | ![Trung tâm hội nghị](docs/meeting.png) |
 
-![Cận cảnh một trưởng phòng](docs/closeup.png)
+| Canteen | Sảnh, lễ tân, bảo vệ | Hầm đỗ xe |
+| --- | --- | --- |
+| ![Canteen](docs/canteen.png) | ![Sảnh](docs/lobby.png) | ![Hầm đỗ xe](docs/parking.png) |
 
 Ảnh chụp ở chế độ diễn thử, nội dung công việc trong ảnh là ví dụ minh họa.
 
@@ -24,9 +28,34 @@ CEO là phiên Claude Code chính. CEO giao việc cho trưởng phòng, trưở
 
 Khi gọi đích danh, thêm tiền tố plugin: `t-outbox:content-writer`.
 
-Tòa nhà có 7 tầng: tầng 1 là sảnh đón tiếp (cũng là chỗ ngồi của cộng tác viên), tầng 2 Kinh doanh & CSKH, tầng 3 Vận hành, tầng 4 Kỹ thuật & Dữ liệu, tầng 5 Sản phẩm & Thiết kế, tầng 6 Marketing, tầng 7 Ban điều hành. Mái có biển tên công ty. Thứ tự tầng nằm trong `office/roster.json`.
+## Tòa nhà
 
-Đây là cơ cấu của một doanh nghiệp điển hình, không phải bản sao sơ đồ tổ chức của công ty nào. Mọi nhân viên theo chung nguyên tắc: không bịa số liệu, số liệu phải có nguồn, tách rõ dữ liệu đã kiểm chứng, ước tính và nhận định. Sản phẩm được lưu vào `deliverables/<phòng>/` trong dự án của bạn. Chuyên viên tài chính và pháp chế luôn ghi rõ sản phẩm của họ là bản tham khảo, cần người có chứng chỉ hành nghề xác nhận.
+Các tầng xếp theo logic của một trụ sở thật, từ khu công cộng lên khu riêng tư:
+
+| Tầng | Công năng | Bố trí |
+| --- | --- | --- |
+| B1 | Hầm đỗ xe | Ô đỗ có vạch, xe đậu, chốt bảo vệ, barie, ram dốc lên đường |
+| 1 | Sảnh đón tiếp | Quầy lễ tân, tường thương hiệu, khu chờ, cổng kiểm soát, bảo vệ, tủ báo cháy trung tâm; bàn cho cộng tác viên |
+| 2 | Canteen | Bếp, quầy phục vụ, tủ mát, bảng thực đơn, hai dãy bàn ăn, góc cà phê |
+| 3 | Trung tâm hội nghị | Sảnh chờ có bảng lịch phòng, phòng họp lớn 10 chỗ và phòng vừa 6 chỗ có máy chiếu, hai phòng họp nhỏ, khu đào tạo |
+| 4 | Kinh doanh & CSKH | Bảng doanh số, cồng mừng chốt đơn, phòng tiếp khách vách kính |
+| 5 | Marketing | Bảng ý tưởng, bảng hiệu quả kênh, góc brainstorm có máy chiếu, góc chụp hình |
+| 6 | Sản phẩm & Thiết kế | Bảng lộ trình, kệ mẫu, bàn phác thảo lớn, máy in 3D |
+| 7 | Kỹ thuật & Dữ liệu | Tường màn hình giám sát, phòng máy chủ vách kính, bàn đứng |
+| 8 | Vận hành | Dãy tủ hồ sơ, két sắt, máy photocopy, bảng thông báo, bàn lưu trữ |
+| 9 | Ban điều hành | Bàn CEO, phòng họp hội đồng có máy chiếu, tủ sách, khu tiếp khách |
+| Mái | | Biển tên công ty, sân đỗ trực thăng, buồng máy thang |
+
+Hạ tầng chung của tòa nhà:
+
+- **Thang máy kính** ở góc trước bên trái, cabin chạy thật giữa các tầng; mỗi lần việc được giao từ tầng này sang tầng khác, thang chạy đúng chặng đó.
+- **Thang bộ thoát hiểm** bằng thép ở hông phải, chạy suốt chiều cao tòa nhà.
+- **Phòng cháy chữa cháy** ở mọi tầng: tủ vòi và bình chữa cháy cạnh thang máy, chuông báo, đường ống sprinkler dưới trần, biển EXIT; ngoài sân có trụ nước và biển điểm tập kết.
+- **An ninh:** bảo vệ ở sảnh và ở chốt hầm xe, camera ở sảnh và hầm, cổng kiểm soát trước thang máy.
+- **Khuôn viên:** quảng trường, cầu dẫn trải thảm vào sảnh, cột cờ, cây, đường phố có xe chạy qua.
+- Mỗi tầng có biển WC cạnh lõi thang.
+
+Lễ tân, bảo vệ và bếp là người của tòa nhà, không phải subagent: họ đứng trực và không nhận việc. Thứ tự tầng nằm trong `office/roster.json`; nội thất từng tầng nằm trong các hàm `furnish_*` của `dashboard/view3d.js`.
 
 ## Yêu cầu
 
@@ -92,7 +121,7 @@ Các nút phía trên:
 - **Theo việc** (mặc định bật): máy quay tự lướt tới gần người vừa nhận việc, xong lượt thì lùi về toàn cảnh. Kéo chuột là máy quay trả quyền điều khiển cho bạn.
 - **Ẩn chi tiết:** ẩn tên file, câu tìm kiếm và nội dung việc trong bong bóng, bảng việc và nhật ký, dùng khi quay màn hình.
 - **Buổi tối:** đổi ánh sáng ngày và tối.
-- **Góc nhìn mặc định, Xem 2D:** kéo chuột để xoay, lăn chuột để phóng. Tới gần sẽ hiện biển tên trên bàn. Bấm tên một phòng trong danh sách **Phòng ban** để lướt tới tầng đó.
+- **Góc nhìn mặc định, Xem 2D:** kéo chuột để xoay, lăn chuột để phóng. Tới gần sẽ hiện biển tên trên bàn. Bấm một dòng trong danh sách **Phòng ban** để lướt tới tầng đó, kể cả trung tâm hội nghị, canteen, sảnh và hầm xe.
 
 Bên dưới là **bảng công việc** ba cột (chờ nhận, đang làm, đã xong). Mỗi thẻ ghi người làm, phòng ban, người giao, đồng hồ chạy và việc đang làm lúc này; bấm vào thẻ để xem từng bước. Khi nhiều phiên Claude Code cùng làm trong một dự án, mỗi phiên có một màu riêng trên thẻ và trên tờ giấy giao việc.
 
@@ -158,12 +187,13 @@ Trụ sở 3D dựng bằng [three.js](https://threejs.org) (giấy phép MIT, �
 
 | Mô hình | Tác giả | Giấy phép | Vị trí |
 | --- | --- | --- | --- |
-| Kenney Mini Characters 2.0 (8 nhân vật, mỗi người 32 hoạt ảnh) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/people/` |
-| Kenney Furniture Kit 2.0 (bàn làm việc, ghế xoay, màn hình, sofa, tủ sách, quầy, cây) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/office/` |
+| Kenney Mini Characters 2.0 (9 nhân vật, mỗi người 32 hoạt ảnh) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/people/` |
+| Kenney Furniture Kit 2.0 (bàn làm việc, ghế xoay, màn hình, sofa, tủ sách, quầy bếp, bàn ăn, cây) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/office/` |
+| Kenney Car Kit 3.1 (xe trong hầm và trên đường) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/cars/` |
 
-Hai bộ được tải trực tiếp từ kenney.nl; file `License.txt` gốc của từng bộ nằm cùng thư mục. Kết cấu tòa nhà, biển hiệu, cây ngoài quảng trường và dây đeo thẻ dựng bằng hình khối trong mã nguồn.
+Ba bộ được tải trực tiếp từ kenney.nl; file `License.txt` gốc của từng bộ nằm cùng thư mục. Kết cấu tòa nhà, thang máy, thang bộ, thiết bị PCCC, máy chiếu, màn hình, biển hiệu, cây và dây đeo thẻ dựng bằng hình khối trong mã nguồn.
 
-Repo dùng 8 trong 13 nhân vật đời thường của bộ gốc, chọn những người hợp bối cảnh văn phòng: 6 người cho nhân viên (`female-b`, `female-c`, `female-e`, `female-f`, `male-a`, `male-b`) và 2 người mặc vest cho trưởng phòng, CEO (`female-d`, `male-d`). Áo, quần, cà vạt, tóc và màu da được đổi bằng cách tô lại bảng màu của nhân vật ngay trong trình duyệt; bảng gán vùng màu là `LOOKS` trong `dashboard/view3d.js`.
+Repo dùng 9 trong 13 nhân vật đời thường của bộ gốc (thêm `male-c` làm bảo vệ; `female-e` giữ áo trắng gốc khi làm bếp), chọn những người hợp bối cảnh văn phòng: 6 người cho nhân viên (`female-b`, `female-c`, `female-e`, `female-f`, `male-a`, `male-b`) và 2 người mặc vest cho trưởng phòng, CEO (`female-d`, `male-d`). Áo, quần, cà vạt, tóc và màu da được đổi bằng cách tô lại bảng màu của nhân vật ngay trong trình duyệt; bảng gán vùng màu là `LOOKS` trong `dashboard/view3d.js`.
 
 ## Dữ liệu và quyền riêng tư
 
@@ -178,8 +208,10 @@ Repo dùng 8 trong 13 nhân vật đời thường của bộ gốc, chọn nh�
 - Trưởng phòng chỉ giao tiếp được cho nhân viên khi Claude Code cho phép subagent gọi subagent. Nếu môi trường đặt `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`, trưởng phòng sẽ tự làm phần việc đó và ghi rõ trong báo cáo.
 - Dấu chờ duyệt quyền chỉ tắt khi nhân viên đó có hoạt động kế tiếp, nên có thể còn hiện một lúc sau khi bạn đã duyệt.
 - Phiên bị tắt đột ngột: nhân viên của phiên đó ở lại bàn tối đa 30 phút rồi mới về góc tiếp khách.
-- Nhân vật theo phong cách khối vuông đơn giản; có 8 dáng người.
-- Nhân viên đứng chờ ở góc tiếp khách của tầng mình; chưa có cảnh đi thang máy giữa các tầng.
+- Nhân vật theo phong cách khối vuông đơn giản; có 8 dáng nhân viên.
+- Nhân viên đứng chờ ở góc tiếp khách của tầng mình; thang máy chạy theo việc được giao nhưng chưa chở người, và chưa ai dùng canteen hay phòng họp.
+- Bản 2D dự phòng chỉ vẽ các tầng dạng dải, không có hầm xe và nội thất riêng từng tầng.
+- Nhãn tên không bị che bởi sàn hay tường nên đôi khi hiện xuyên qua vật cản.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.
 - Design chỉ dựng được bản thiết kế thật khi phiên làm việc có công cụ thiết kế kết nối (ví dụ Canva qua MCP); nếu không, kết quả là brief hoặc file SVG/HTML.
 

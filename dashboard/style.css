@@ -239,6 +239,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .depts li { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
 .depts li::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
 .dept-name { flex: 1; min-width: 0; }
+.depts li.place { --c: var(--muted); }
+.depts li:not(.place) + li.place { margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 9px; border-radius: 0; }
 .dept-dots { display: flex; gap: 3px; }
 .dept-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
 .dept-dots i.working { background: var(--c); }

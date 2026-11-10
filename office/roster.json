@@ -2,11 +2,13 @@
   "building": {"floorWidth": 16, "floorDepth": 7, "floorHeight": 3},
   "floors": [
     {"id": "lobby", "name": "Sảnh đón tiếp", "kind": "lobby"},
+    {"id": "canteen", "name": "Canteen", "kind": "canteen"},
+    {"id": "meeting", "name": "Trung tâm hội nghị", "kind": "meeting"},
     {"id": "sales", "dept": "sales"},
-    {"id": "operations", "dept": "operations"},
-    {"id": "engineering", "dept": "engineering"},
-    {"id": "product", "dept": "product"},
     {"id": "marketing", "dept": "marketing"},
+    {"id": "product", "dept": "product"},
+    {"id": "engineering", "dept": "engineering"},
+    {"id": "operations", "dept": "operations"},
     {"id": "executive", "dept": "executive"}
   ],
   "departments": [
