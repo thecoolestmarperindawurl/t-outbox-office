@@ -36,10 +36,10 @@ Tòa nhà có 7 tầng: tầng 1 là sảnh đón tiếp (cũng là chỗ ngồi
 
 ## Cài đặt
 
-Trong Claude Code, thêm repo này làm marketplace rồi cài plugin (thay `<owner>/<repo>` bằng địa chỉ GitHub của repo):
+Trong Claude Code, thêm repo này làm marketplace rồi cài plugin:
 
 ```
-/plugin marketplace add <owner>/<repo>
+/plugin marketplace add thecoolestmarperindawurl/t-outbox-office
 /plugin install t-outbox@t-outbox
 ```
 
