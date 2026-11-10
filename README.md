@@ -16,9 +16,13 @@ Biến Claude Code thành một tập đoàn. Bạn là sếp, Claude là CEO, c
 | --- | --- |
 | ![Họp nhóm](docs/meeting-room.png) | ![Phòng họp hội đồng](docs/boardroom.png) |
 
-| Đi thang bộ | Xe dừng nhường đường trước khi vào làn |
+| Đi thang bộ | Người qua đường khi đèn đỏ cho xe |
 | --- | --- |
-| ![Thang bộ](docs/stairs.png) | ![Nhường đường](docs/traffic.png) |
+| ![Thang bộ](docs/stairs.png) | ![Qua đường](docs/street.png) |
+
+| Xe dừng nhường đường trước khi vào làn | |
+| --- | --- |
+| ![Nhường đường](docs/traffic.png) | |
 
 | Canteen | Sảnh, lễ tân, bảo vệ |
 | --- | --- |
@@ -64,7 +68,7 @@ Hạ tầng chung của tòa nhà:
 - **Thang bộ thoát hiểm** bằng thép ở hông phải, chạy suốt chiều cao tòa nhà; mỗi tầng có cửa ra thang ngay chiếu nghỉ.
 - **Phòng cháy chữa cháy** ở mọi tầng: tủ vòi và bình chữa cháy cạnh thang máy, chuông báo, đường ống sprinkler dưới trần, biển EXIT; ngoài sân có trụ nước và biển điểm tập kết.
 - **An ninh:** bảo vệ ở sảnh và ở chốt hầm xe, camera ở sảnh và hầm, cổng kiểm soát trước thang máy.
-- **Khuôn viên:** quảng trường, cầu dẫn trải thảm vào sảnh, cột cờ, cây, đường phố hai làn có xe chạy qua, vạch dừng ở đầu ram.
+- **Khuôn viên:** quảng trường, cầu dẫn trải thảm vào sảnh, cột cờ, cây, đường phố bốn làn có đèn giao thông và vạch qua đường trước cầu dẫn, vạch dừng ở đầu ram, người đi đường trên vỉa hè.
 - Mỗi tầng có biển WC cạnh lõi thang.
 
 ### Nhân viên dùng tòa nhà như thế nào
@@ -82,9 +86,13 @@ Hạ tầng chung của tòa nhà:
 
 **Đi lại giữa các tầng.** Cách một tầng thì đi thang bộ: ra cửa thang ở vách phải, leo từng vế thang, vào tầng đích. Cách hai tầng mà thang máy đang có từ ba lượt gọi trở lên cũng đi thang bộ. Xa hơn, hoặc xuống hầm B1 (thang bộ không xuống hầm), thì đi thang máy.
 
-**Họp.** Các lần giao việc của cùng một người trong vòng 1,2 giây được gom thành một cuộc họp. Cuộc họp chỉ bắt đầu khi đủ người (hoặc sau 45 giây nếu có người tới muộn) và kéo dài 5 giây cộng 1,5 giây cho mỗi người dự. Người vào chỗ theo lối riêng của từng phòng: hàng ghế sau đi vòng đầu bàn, phòng họp nhỏ đi qua cửa ở vách sau, khu đào tạo đi theo khe giữa hai hàng ghế.
+**Họp.** Các lần giao việc của cùng một người trong vòng 1,2 giây được gom thành một cuộc họp. Cuộc họp chỉ bắt đầu khi đủ người (hoặc sau 30 giây nếu có người tới muộn) và kéo dài 3,5 giây cộng 1 giây cho mỗi người dự. Ai làm xong việc trước khi buổi họp bắt đầu thì bỏ họp, về luôn; nếu không còn ai dự thì người chủ trì cũng rời phòng. Người đang có việc đi nhanh hơn người đang rảnh. Người vào chỗ theo lối riêng của từng phòng: hàng ghế sau đi vòng đầu bàn, phòng họp nhỏ đi qua cửa ở vách sau, khu đào tạo đi theo khe giữa hai hàng ghế.
 
-**Giao thông.** Xe chạy bên phải đường: làn sát trụ sở đi một chiều, làn bên kia đi chiều ngược lại. Mỗi xe giữ khoảng cách với xe phía trước và phanh lại khi xe trước dừng. Xe ra khỏi hầm dừng trước barie chờ barie nâng, lên ram, dừng ở vạch nhường đường tới khi làn trống rồi mới rẽ phải vào làn. Xe về giảm tốc rẽ phải vào ram, dừng chờ barie, chạy qua ô của mình rồi lùi vào ô.
+**Tránh nhau.** Người đi ngược chiều cùng nép sang phải để đi qua nhau, trên hành lang lẫn trên thang bộ; người phía trước đi cùng chiều mà chậm thì người sau giảm tốc theo. Người chờ thang máy đứng xếp hàng trước cửa cabin. Người đi đường cũng đi bên phải: mỗi chiều trên vỉa hè và trên vạch qua đường có lối riêng.
+
+**Giao thông.** Đường bốn làn, mỗi chiều hai làn, xe chạy bên phải. Mỗi xe giữ khoảng cách với xe phía trước. Xe bị xe chậm chặn thì sang làn vượt khi làn đó đủ trống, vượt xong về lại làn phải; không chuyển làn trong đoạn 7 m quanh vạch qua đường. Đèn giao thông đổi xanh, vàng, đỏ; xe dừng sau vạch dừng khi đèn đỏ, đèn vàng mà còn đủ xa thì dừng, đã sát vạch thì đi tiếp. Người đi bộ chỉ bước xuống khi đèn xe đã đỏ được 1,5 giây và còn đủ thời gian đi hết vạch. Xe xếp hàng chờ đèn không dừng chắn lối ra vào hầm. Xe ra khỏi hầm dừng trước barie chờ barie nâng, lên ram, dừng ở vạch nhường đường tới khi làn trống rồi mới rẽ phải vào làn. Xe về giảm tốc rẽ phải vào ram, dừng chờ barie, chạy qua ô của mình rồi lùi vào ô.
+
+Khi khung hình kéo dài (máy chậm), phần mô phỏng được chia thành các bước nhỏ tối đa 0,04 giây để người không đi xuyên qua nhau và xe không chạy xuyên qua nhau.
 
 Nhân viên đi theo hành lang và sảnh thang của từng tầng nên không xuyên qua bàn ghế hay phòng kính. Việc đi lại chỉ là phần trình diễn: bong bóng, bảng công việc và nhật ký vẫn phản ánh ngay trạng thái thật của subagent, kể cả khi nhân vật còn đang trên đường về bàn.
 
@@ -242,10 +250,9 @@ Repo dùng 9 trong 13 nhân vật đời thường của bộ gốc (thêm `male
 - Dấu chờ duyệt quyền chỉ tắt khi nhân viên đó có hoạt động kế tiếp, nên có thể còn hiện một lúc sau khi bạn đã duyệt.
 - Phiên bị tắt đột ngột: nhân viên của phiên đó ở lại bàn tối đa 30 phút rồi mới về góc tiếp khách.
 - Nhân vật theo phong cách khối vuông đơn giản; có 8 dáng nhân viên.
-- Nhân vật có thể tới bàn trễ hơn trạng thái thật vài chục giây vì phải đi thang và họp; việc ngắn có thể xong trước khi nhân vật kịp ngồi vào bàn.
+- Nhân vật vẫn có thể tới bàn trễ hơn trạng thái thật vài giây vì phải đi lại và họp.
 - Lúc rất nhiều người được giao việc cùng lúc vẫn có thể có hàng chờ thang máy.
-- Người đi bộ không tránh nhau: hai người đi ngược chiều trên cùng hành lang hoặc cùng vế thang có thể đi xuyên qua nhau.
-- Xe trên đường chỉ đi thẳng; không có đèn giao thông, người đi bộ qua đường hay xe đổi làn.
+- Tránh nhau chỉ xét người đi đối diện và người đi trước cùng chiều; hai người đi vuông góc ở góc hành lang vẫn có thể lướt sát nhau.
 - Bản 2D dự phòng chỉ vẽ các tầng dạng dải, không có hầm xe và nội thất riêng từng tầng.
 - Nhãn tên không bị che bởi sàn hay tường nên đôi khi hiện xuyên qua vật cản.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.
