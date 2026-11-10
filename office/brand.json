@@ -1,14 +1,20 @@
 {
   "name": "T-outbox",
-  "tagline": "Văn phòng AI của bạn",
+  "tagline": "LANHMAR ★ Digital Marketer",
   "logoText": "T",
   "colors": {
-    "primary": "#1f3a8a",
-    "secondary": "#1b2238",
-    "accent": "#ff8a1f"
+    "primary": "#2D2FEF",
+    "secondary": "#241F45",
+    "accent": "#FF7A45"
   },
   "uniform": {
-    "style": "polo",
-    "trousers": "#2a3042"
+    "trousers": "#241F45"
+  },
+  "theme": {
+    "bg": "#F3F1FD",
+    "panel": "#FFFDF9",
+    "ink": "#241F45",
+    "muted": "#55507A",
+    "line": "#D6CEF7"
   }
 }

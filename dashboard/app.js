@@ -513,6 +513,10 @@ async function start() {
     root.setProperty('--brand', brand.colors.primary);
     root.setProperty('--accent', brand.colors.accent);
   }
+  // Màu nền giao diện theo brand (tùy chọn `theme` trong brand.json).
+  for (const [key, value] of Object.entries(brand.theme || {})) {
+    if (['bg', 'panel', 'ink', 'muted', 'line'].includes(key) && /^#[0-9a-f]{6}$/i.test(value)) root.setProperty('--' + key, value);
+  }
   S.lively = pref('lively', '1') === '1';
   $('btn-lively').setAttribute('aria-pressed', String(S.lively));
   $('btn-night').setAttribute('aria-pressed', String(pref('night', '0') === '1'));

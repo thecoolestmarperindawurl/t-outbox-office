@@ -22,10 +22,21 @@ const FURNITURE = [
   'bookcaseOpen', 'bookcaseClosedWide', 'rugRound', 'rugRectangle', 'lampRoundFloor', 'lampSquareTable',
   'televisionModern', 'sideTableDrawers', 'coatRackStanding', 'trashcan',
 ];
-// Ô màu trên bảng màu của nhân vật: [cột, dải]. Đổi màu ô là đổi màu áo, quần, tóc, da.
-const CELLS = {
-  m: { model: 'male-a', shirt: [112, 'A'], pants: [368, 'A'], shoes: [176, 'A'], hair: [48, 'B'], skin: [432, 'B'], belt: [368, 'B'] },
-  f: { model: 'female-b', shirt: [176, 'A'], pants: [496, 'A'], hair: [368, 'B'], skin: [496, 'B'] },
+// Mỗi nhân vật dùng vài ô trên bảng màu chung (ô = [cột, hàng], mỗi ô 64x128 điểm ảnh).
+// Tô lại ô là đổi màu áo, quần, tóc, da. Chỉ khai báo ô nào nhân vật dùng riêng cho phần đó.
+const LOOKS = {
+  'female-b': { shirt: [0, 3], pants: [2, 1], hair: [0, 2], skin: [2, 2] },
+  'female-c': { shirt: [0, 1], hair: [1, 3], skin: [0, 2] },
+  'female-d': { shirt: [1, 3], hair: [0, 2], skin: [2, 2] },                 // mặc vest
+  'female-e': { shirt: [7, 3], skin: [2, 2] },
+  'female-f': { shirt: [0, 3], pants: [0, 1], hair: [1, 2], skin: [2, 2] },
+  'male-a': { shirt: [4, 2], pants: [0, 1], shoes: [0, 3], belt: [0, 2], skin: [1, 2] },
+  'male-b': { shirt: [7, 2], pants: [0, 1], hair: [0, 2], skin: [2, 2] },
+  'male-d': { shirt: [3, 3], tie: [7, 2], hair: [0, 2], skin: [2, 2] },      // mặc vest, cà vạt
+};
+const CAST = {
+  staff: { m: ['male-a', 'male-b'], f: ['female-b', 'female-c', 'female-e', 'female-f'] },
+  formal: { m: ['male-d'], f: ['female-d'] },   // trưởng phòng và CEO
 };
 const IDLE_SPOTS = [[-0.9, 0.3], [0.9, 0.5], [0, 1.2], [-0.8, 1.6], [0.9, 1.7], [0.1, -0.1], [-1.6, 0.9], [1.7, 1.1]];
 const mix = (a, b, t) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
@@ -43,13 +54,15 @@ export class View3D {
   // Nạp mô hình xong mới dựng cảnh. Lỗi nạp hoặc không có WebGL thì ném ra để app.js chuyển sang bản 2D.
   static async create(container, roster) {
     const loader = new GLTFLoader();
-    const [male, female, ...furniture] = await Promise.all([
-      loader.loadAsync('/assets/people/male-a.glb'),
-      loader.loadAsync('/assets/people/female-b.glb'),
-      ...FURNITURE.map((name) => loader.loadAsync(`/assets/office/${name}.glb`)),
+    const cast = Object.keys(LOOKS);
+    const [people, furniture] = await Promise.all([
+      Promise.all(cast.map((name) => loader.loadAsync(`/assets/people/${name}.glb`))),
+      Promise.all(FURNITURE.map((name) => loader.loadAsync(`/assets/office/${name}.glb`))),
     ]);
-    const models = Object.fromEntries(FURNITURE.map((name, i) => [name, furniture[i].scene]));
-    return new View3D(container, roster, { people: { 'male-a': male, 'female-b': female }, models });
+    return new View3D(container, roster, {
+      people: Object.fromEntries(cast.map((name, i) => [name, people[i]])),
+      models: Object.fromEntries(FURNITURE.map((name, i) => [name, furniture[i].scene])),
+    });
   }
 
   constructor(container, roster, assets) {
@@ -381,8 +394,8 @@ export class View3D {
 
   // ---- Nhân viên ------------------------------------------------------------------------
   // Tô lại một ô trên bảng màu, giữ nguyên độ đậm nhạt gốc của từng điểm ảnh.
-  recolor(ctx, [col, band], hex) {
-    const x0 = col - 32, y0 = band === 'A' ? 256 : 384;
+  recolor(ctx, [col, row], hex) {
+    const x0 = col * 64, y0 = row * 128;
     const img = ctx.getImageData(x0, y0, 64, 128), d = img.data;
     const base = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     let max = 1;
@@ -398,15 +411,17 @@ export class View3D {
     const { brand } = this;
     const hex = (v) => (/^#[0-9a-f]{6}$/i.test(v) ? v : null);
     const gender = s.gender === 'f' || s.gender === 'm' ? s.gender : hash(s.id, 2) ? 'f' : 'm';
-    const cells = CELLS[gender];
     const formal = Boolean(s.lead || s.fixed);
+    const pool = CAST[formal ? 'formal' : 'staff'][gender];
+    const model = LOOKS[s.model] ? s.model : pool[(s.slot + hash(s.id, 7)) % pool.length];
+    const cells = LOOKS[model];
     const colors = {
-      shirt: hex(formal ? brand.secondary : brand.primary), pants: hex(brand.trousers),
+      shirt: hex(formal ? brand.secondary : brand.primary), pants: hex(brand.trousers), tie: hex(brand.accent),
       shoes: '#2a2a30', belt: '#2a2a30', hair: hex(s.hair), skin: hex(s.skin),
     };
-    const key = gender + JSON.stringify(colors);
+    const key = model + JSON.stringify(colors);
     if (!this.textures.has(key)) {
-      const gltf = this.assets.people[cells.model];
+      const gltf = this.assets.people[model];
       let src = null;
       gltf.scene.traverse((o) => { if (o.isMesh && o.material.map && !src) src = o.material.map; });
       const c = document.createElement('canvas');
@@ -421,7 +436,7 @@ export class View3D {
       tex.wrapS = src.wrapS; tex.wrapT = src.wrapT;
       this.textures.set(key, tex);
     }
-    return { model: cells.model, map: this.textures.get(key), formal };
+    return { model, map: this.textures.get(key), formal };
   }
 
   // Đồng phục: áo màu chính của brand, dây thẻ màu nhấn, thẻ có vạch màu phòng ban.
@@ -452,12 +467,7 @@ export class View3D {
         m.rotation.z = rz;
         kit.add(m);
       };
-      if (look.formal) {
-        piece(0.03, 0.022, brand.accent, 0, 0.335);
-        piece(0.024, 0.085, brand.accent, 0, 0.285);
-        piece(0.042, 0.018, '#ffffff', -0.027, 0.352, -0.5, -0.004);
-        piece(0.042, 0.018, '#ffffff', 0.027, 0.352, 0.5, -0.004);
-      } else {
+      if (!look.formal) { // người mặc vest đã có sẵn cổ áo, cà vạt trong mô hình
         piece(0.01, 0.09, brand.accent, -0.018, 0.315, -0.38);
         piece(0.01, 0.09, brand.accent, 0.018, 0.315, 0.38);
         piece(0.05, 0.046, '#ffffff', 0, 0.252, 0, 0.003);

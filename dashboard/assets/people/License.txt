@@ -1,9 +1,9 @@
 	
 
-	Castle Kit (2.0)
+	Mini Characters (2.0)
 
 	Created/distributed by Kenney (www.kenney.nl)
-	Creation date: 27-03-2024 13:37
+	Creation date: 07-11-2026 11:14
 	
 			------------------------------
 
@@ -23,6 +23,6 @@
 	
 	Follow on social media for updates:
 
-	• Twitter:   twitter.com/KenneyNL
+	• Twitter:	 twitter.com/KenneyNL
+	• BlueSky:	 kenney.bsky.social
 	• Instagram: instagram.com/kenney_nl
-	• Mastodon:  mastodon.gamedev.place/@kenney

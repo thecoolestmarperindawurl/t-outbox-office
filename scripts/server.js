@@ -59,6 +59,7 @@ function config() {
     ...baseBrand, ...b,
     colors: { ...baseBrand.colors, ...(b.colors || {}) },
     uniform: { ...baseBrand.uniform, ...(b.uniform || {}) },
+    theme: { ...baseBrand.theme, ...(b.theme || {}) },
   };
   return { ...base, staff, brand, project: path.basename(projectDir) };
 }

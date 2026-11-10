@@ -98,7 +98,9 @@ Bên dưới là **bảng công việc** ba cột (chờ nhận, đang làm, đ�
 
 ## Đồng phục theo brand
 
-Nhân viên mặc áo màu chính của brand, quần màu tối, đeo dây thẻ màu nhấn, thẻ nhân viên có vạch màu phòng ban. Trưởng phòng và CEO mặc áo màu phụ (như áo khoác), cổ trắng, cà vạt màu nhấn. Sảnh, tầng điều hành và mái nhà có biển tên công ty; thảm, sofa và viền mái mang màu brand.
+Nhân viên mặc áo màu chính của brand, đeo dây thẻ màu nhấn, thẻ nhân viên có vạch màu phòng ban. Trưởng phòng và CEO mặc vest màu phụ; cà vạt mang màu nhấn. Sảnh, tầng điều hành và mái nhà có biển tên công ty; thảm, sofa và viền mái mang màu brand.
+
+Brand mặc định của repo là **LanhMar**: tím xanh `#2D2FEF` (áo), tím than `#241F45` (vest, quần), cam `#FF7A45` (dây thẻ, cà vạt), nền giao diện lavender `#F3F1FD`. Các mã màu lấy từ brand guideline LanhMar. Chữ dùng Montserrat nếu máy đã cài, không thì dùng font hệ thống (trang không tải font từ mạng). Logo chữ "T" là dạng tạm, chưa phải logo LanhMar.
 
 Cách nạp brand:
 
@@ -116,7 +118,7 @@ Cách nạp brand:
 }
 ```
 
-`uniform.trousers` (tùy chọn) đổi màu quần. Màu mặc định của T-outbox là màu tạm do repo đặt, bạn nên thay bằng brand của mình.
+`uniform.trousers` (tùy chọn) đổi màu quần. `theme` (tùy chọn) đổi màu giao diện trang: `bg`, `panel`, `ink`, `muted`, `line`.
 
 ## Tùy biến nhân sự
 
@@ -136,7 +138,7 @@ Tạo `.t-outbox/roster.json` trong dự án và ghi đè theo `id`, hoặc thê
 - `match`: các subagent bạn đã có sẵn, tên khớp mẫu, sẽ ngồi vào bàn của người này. Subagent không khớp ai thì ngồi khu cộng tác viên.
 - `off: true`: vị trí để trống, bàn hiện biển "Đang tuyển".
 - Người mới có `dept` được xếp bàn kế tiếp trên tầng của phòng đó; không có `dept` thì ngồi ở sảnh tầng 1.
-- `gender` (`m` hoặc `f`), `hair`, `skin` (mã màu hex) đổi ngoại hình. Nhân vật nam dùng chung màu cho tóc và mắt, nên chọn tóc màu tối.
+- `gender` (`m` hoặc `f`), `hair`, `skin` (mã màu hex) đổi ngoại hình; `model` chọn đích danh một nhân vật (ví dụ `female-f`). Hai nhân vật `male-a` và `female-e` giữ màu tóc gốc vì tóc dùng chung ô màu với phần khác.
 
 Hồ sơ từng nhân viên là một file tiếng Việt trong `agents/`; sửa trực tiếp để đổi cách làm việc. Kích thước tòa nhà, thứ tự tầng và phòng ban nằm trong `office/roster.json`.
 
@@ -156,14 +158,12 @@ Trụ sở 3D dựng bằng [three.js](https://threejs.org) (giấy phép MIT, �
 
 | Mô hình | Tác giả | Giấy phép | Vị trí |
 | --- | --- | --- | --- |
-| Kenney Mini Characters 1.0 (hai nhân vật nam và nữ, mỗi người 32 hoạt ảnh) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/people/` |
-| Kenney Furniture Kit (bàn làm việc, ghế xoay, màn hình, sofa, tủ sách, quầy, cây) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/office/` |
+| Kenney Mini Characters 2.0 (8 nhân vật, mỗi người 32 hoạt ảnh) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/people/` |
+| Kenney Furniture Kit 2.0 (bàn làm việc, ghế xoay, màn hình, sofa, tủ sách, quầy, cây) | Kenney (www.kenney.nl) | CC0 1.0 | `dashboard/assets/office/` |
 
-Kết cấu tòa nhà, biển hiệu, cây ngoài quảng trường và phụ kiện đồng phục dựng bằng hình khối trong mã nguồn. Áo, quần, tóc và màu da được đổi bằng cách tô lại bảng màu của nhân vật ngay trong trình duyệt.
+Hai bộ được tải trực tiếp từ kenney.nl; file `License.txt` gốc của từng bộ nằm cùng thư mục. Kết cấu tòa nhà, biển hiệu, cây ngoài quảng trường và dây đeo thẻ dựng bằng hình khối trong mã nguồn.
 
-Nguồn tải: trang kenney.nl không truy cập được từ môi trường dựng repo này, nên hai bộ mô hình được lấy từ các dự án công khai trên GitHub có kèm file giấy phép của Kenney ([yelaoutar/3DGame](https://github.com/yelaoutar/3DGame) cho nhân vật, [PhBrb/TODO](https://github.com/PhBrb/TODO) cho nội thất). File giấy phép đi kèm bộ nội thất là bản giấy phép CC0 chung của Kenney chứ không ghi riêng tên Furniture Kit; nếu cần chắc chắn tuyệt đối, hãy tải lại hai bộ từ kenney.nl và chép đè.
-
-Bộ nhân vật chỉ có hai dáng người (một nam, một nữ); sự đa dạng đến từ màu tóc, màu da và đồng phục. Bộ gốc có 12 nhân vật, thêm vào là có thêm dáng người.
+Repo dùng 8 trong 13 nhân vật đời thường của bộ gốc, chọn những người hợp bối cảnh văn phòng: 6 người cho nhân viên (`female-b`, `female-c`, `female-e`, `female-f`, `male-a`, `male-b`) và 2 người mặc vest cho trưởng phòng, CEO (`female-d`, `male-d`). Áo, quần, cà vạt, tóc và màu da được đổi bằng cách tô lại bảng màu của nhân vật ngay trong trình duyệt; bảng gán vùng màu là `LOOKS` trong `dashboard/view3d.js`.
 
 ## Dữ liệu và quyền riêng tư
 
@@ -178,11 +178,11 @@ Bộ nhân vật chỉ có hai dáng người (một nam, một nữ); sự đa 
 - Trưởng phòng chỉ giao tiếp được cho nhân viên khi Claude Code cho phép subagent gọi subagent. Nếu môi trường đặt `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`, trưởng phòng sẽ tự làm phần việc đó và ghi rõ trong báo cáo.
 - Dấu chờ duyệt quyền chỉ tắt khi nhân viên đó có hoạt động kế tiếp, nên có thể còn hiện một lúc sau khi bạn đã duyệt.
 - Phiên bị tắt đột ngột: nhân viên của phiên đó ở lại bàn tối đa 30 phút rồi mới về góc tiếp khách.
-- Chỉ có hai dáng nhân vật (một nam, một nữ), phong cách khối vuông đơn giản.
+- Nhân vật theo phong cách khối vuông đơn giản; có 8 dáng người.
 - Nhân viên đứng chờ ở góc tiếp khách của tầng mình; chưa có cảnh đi thang máy giữa các tầng.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.
 - Design chỉ dựng được bản thiết kế thật khi phiên làm việc có công cụ thiết kế kết nối (ví dụ Canva qua MCP); nếu không, kết quả là brief hoặc file SVG/HTML.
 
 ## Giấy phép
 
-Mã nguồn: MIT, xem [LICENSE](LICENSE). three.js giữ giấy phép riêng tại `dashboard/vendor/LICENSE-three.txt`. Mô hình 3D: CC0, xem bảng ghi công ở trên và các file `LICENSE-Kenney.txt` trong `dashboard/assets/`.
+Mã nguồn: MIT, xem [LICENSE](LICENSE). three.js giữ giấy phép riêng tại `dashboard/vendor/LICENSE-three.txt`. Mô hình 3D: CC0, xem bảng ghi công ở trên và các file `License.txt` trong `dashboard/assets/`.
