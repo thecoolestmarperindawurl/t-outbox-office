@@ -1,12 +1,14 @@
 {
-  "name": "ai-office",
-  "description": "Văn phòng AI cho người dùng Claude Code: đội nhân viên subagent và dashboard văn phòng trực quan.",
-  "owner": { "name": "AI Office contributors" },
+  "name": "t-outbox",
+  "description": "T-outbox: công ty AI cho người dùng Claude Code, với đội subagent theo phòng ban và văn phòng 3D.",
+  "owner": {
+    "name": "T-outbox contributors"
+  },
   "plugins": [
     {
-      "name": "office",
+      "name": "t-outbox",
       "source": "./",
-      "description": "Đội nhân viên AI (content, design, web, SEO, ads, data, QA...) và dashboard văn phòng theo dõi họ làm việc.",
+      "description": "Công ty AI gồm CEO, 5 phòng ban, 17 nhân viên subagent và văn phòng 3D theo dõi họ làm việc.",
       "category": "productivity"
     }
   ]

@@ -1,0 +1,14 @@
+{
+  "name": "T-outbox",
+  "tagline": "Văn phòng AI của bạn",
+  "logoText": "T",
+  "colors": {
+    "primary": "#1f3a8a",
+    "secondary": "#1b2238",
+    "accent": "#ff8a1f"
+  },
+  "uniform": {
+    "style": "polo",
+    "trousers": "#2a3042"
+  }
+}

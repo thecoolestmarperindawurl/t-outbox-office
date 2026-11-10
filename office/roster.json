@@ -1,29 +1,49 @@
 {
-  "floor": { "width": 1200, "height": 720 },
+  "floor": {"width": 1480, "height": 760},
+  "aisles": {"top": 234, "bottom": 550},
+  "departments": [
+    {"id": "executive", "name": "Ban điều hành", "color": "#1e2a4a", "head": "manager"},
+    {"id": "marketing", "name": "Marketing", "color": "#e4572e", "head": "marketing-lead"},
+    {"id": "product", "name": "Sản phẩm & Thiết kế", "color": "#7c5cbf", "head": "product-manager"},
+    {"id": "engineering", "name": "Kỹ thuật & Dữ liệu", "color": "#2f7fd1", "head": "tech-lead"},
+    {"id": "sales", "name": "Kinh doanh & CSKH", "color": "#2f9e6e", "head": "sales-lead"},
+    {"id": "operations", "name": "Vận hành", "color": "#b8860b", "head": "operations-lead"}
+  ],
   "rooms": [
-    { "id": "director", "name": "Phòng Giám đốc", "x": 16, "y": 16, "w": 240, "h": 210 },
-    { "id": "strategy", "name": "Chiến lược & Nghiên cứu", "x": 272, "y": 16, "w": 440, "h": 210 },
-    { "id": "creative", "name": "Sáng tạo", "x": 728, "y": 16, "w": 456, "h": 210 },
-    { "id": "lounge", "name": "Pantry", "x": 16, "y": 242, "w": 560, "h": 236, "kind": "lounge" },
-    { "id": "guests", "name": "Khu cộng tác viên", "x": 592, "y": 242, "w": 592, "h": 236, "kind": "guests" },
-    { "id": "tech", "name": "Kỹ thuật", "x": 16, "y": 494, "w": 380, "h": 210 },
-    { "id": "performance", "name": "Performance", "x": 412, "y": 494, "w": 380, "h": 210 },
-    { "id": "qa", "name": "Kiểm định chất lượng", "x": 808, "y": 494, "w": 376, "h": 210 }
+    {"id": "executive", "dept": "executive", "x": 16, "y": 16, "w": 240, "h": 210, "name": "Ban điều hành"},
+    {"id": "marketing", "dept": "marketing", "x": 272, "y": 16, "w": 600, "h": 210, "name": "Marketing"},
+    {"id": "product", "dept": "product", "x": 888, "y": 16, "w": 576, "h": 210, "name": "Sản phẩm & Thiết kế"},
+    {"id": "lounge", "name": "Pantry", "kind": "lounge", "x": 16, "y": 242, "w": 884, "h": 276},
+    {"id": "guests", "name": "Khu cộng tác viên", "kind": "guests", "x": 916, "y": 242, "w": 548, "h": 276},
+    {"id": "engineering", "dept": "engineering", "x": 16, "y": 534, "w": 600, "h": 210, "name": "Kỹ thuật & Dữ liệu"},
+    {"id": "sales", "dept": "sales", "x": 632, "y": 534, "w": 300, "h": 210, "name": "Kinh doanh & CSKH"},
+    {"id": "operations", "dept": "operations", "x": 948, "y": 534, "w": 516, "h": 210, "name": "Vận hành"}
   ],
   "guestDesks": [
-    { "x": 680, "y": 420 }, { "x": 820, "y": 420 }, { "x": 960, "y": 420 }, { "x": 1100, "y": 420 }
+    {"x": 1000, "y": 450},
+    {"x": 1130, "y": 450},
+    {"x": 1260, "y": 450},
+    {"x": 1390, "y": 450}
   ],
-  "loungeSpots": { "x": 64, "y": 368, "stepX": 56, "stepY": 72, "columns": 9 },
+  "loungeSpots": {"x": 120, "y": 335, "stepX": 78, "stepY": 105, "columns": 9},
   "staff": [
-    { "id": "manager", "name": "Giám đốc", "title": "Điều hành (Claude chính)", "color": "#3b4a6b", "hair": 0, "skin": "#f1c9a5", "desk": { "x": 136, "y": 170 }, "fixed": true },
-    { "id": "strategist", "name": "Chiến lược", "title": "Trưởng phòng chiến lược", "color": "#7c5cbf", "hair": 1, "skin": "#f1c9a5", "desk": { "x": 382, "y": 170 } },
-    { "id": "researcher", "name": "Nghiên cứu", "title": "Nghiên cứu thị trường", "color": "#2f8f83", "hair": 0, "skin": "#d9a679", "desk": { "x": 602, "y": 170 } },
-    { "id": "content-writer", "name": "Content", "title": "Chuyên viên nội dung", "color": "#d9772b", "hair": 2, "skin": "#f1c9a5", "desk": { "x": 842, "y": 170 } },
-    { "id": "designer", "name": "Design", "title": "Thiết kế", "color": "#c8497a", "hair": 1, "skin": "#e8b98f", "desk": { "x": 1070, "y": 170 } },
-    { "id": "web-developer", "name": "Web", "title": "Lập trình web", "color": "#3273c4", "hair": 0, "skin": "#e8b98f", "desk": { "x": 116, "y": 650 } },
-    { "id": "seo-specialist", "name": "SEO", "title": "Chuyên viên SEO", "color": "#5a8f2f", "hair": 2, "skin": "#d9a679", "desk": { "x": 296, "y": 650 } },
-    { "id": "ads-specialist", "name": "Ads", "title": "Quảng cáo trả phí", "color": "#c2452f", "hair": 0, "skin": "#f1c9a5", "desk": { "x": 512, "y": 650 } },
-    { "id": "data-analyst", "name": "Data", "title": "Phân tích dữ liệu", "color": "#2a8fb0", "hair": 1, "skin": "#d9a679", "desk": { "x": 692, "y": 650 } },
-    { "id": "qa-reviewer", "name": "QA", "title": "Kiểm định chất lượng", "color": "#8a6d1f", "hair": 2, "skin": "#e8b98f", "desk": { "x": 996, "y": 650 } }
+    {"id": "manager", "name": "CEO", "title": "Giám đốc điều hành (Claude chính)", "dept": "executive", "desk": {"x": 136, "y": 170}, "hair": 0, "skin": "#f1c9a5", "lead": true, "fixed": true},
+    {"id": "marketing-lead", "name": "TP Marketing", "title": "Trưởng phòng Marketing", "dept": "marketing", "desk": {"x": 350, "y": 170}, "hair": 1, "skin": "#d9a679", "lead": true, "match": ["*strateg*", "*marketing-lead*", "*mkt-strategy*"]},
+    {"id": "content-writer", "name": "Content", "title": "Chuyên viên nội dung", "dept": "marketing", "desk": {"x": 495, "y": 170}, "hair": 2, "skin": "#e8b98f", "match": ["*content*", "*writer*", "*copy*"]},
+    {"id": "seo-specialist", "name": "SEO", "title": "Chuyên viên SEO", "dept": "marketing", "desk": {"x": 640, "y": 170}, "hair": 0, "skin": "#f1c9a5", "match": ["*seo*"]},
+    {"id": "ads-specialist", "name": "Ads", "title": "Chuyên viên quảng cáo", "dept": "marketing", "desk": {"x": 785, "y": 170}, "hair": 1, "skin": "#d9a679", "match": ["*ads*", "*performance*", "*media-buy*"]},
+    {"id": "product-manager", "name": "TP Sản phẩm", "title": "Trưởng phòng Sản phẩm", "dept": "product", "desk": {"x": 990, "y": 170}, "hair": 2, "skin": "#e8b98f", "lead": true, "match": ["*product*", "*pm-*"]},
+    {"id": "designer", "name": "Design", "title": "Thiết kế", "dept": "product", "desk": {"x": 1170, "y": 170}, "hair": 0, "skin": "#f1c9a5", "match": ["*design*", "*creative*", "*brand*"]},
+    {"id": "researcher", "name": "Research", "title": "Nghiên cứu thị trường & người dùng", "dept": "product", "desk": {"x": 1350, "y": 170}, "hair": 1, "skin": "#d9a679", "match": ["*research*"]},
+    {"id": "tech-lead", "name": "TP Kỹ thuật", "title": "Trưởng phòng Kỹ thuật", "dept": "engineering", "desk": {"x": 100, "y": 690}, "hair": 2, "skin": "#e8b98f", "lead": true, "match": ["*tech-lead*", "*architect*"]},
+    {"id": "web-developer", "name": "Web", "title": "Lập trình viên", "dept": "engineering", "desk": {"x": 245, "y": 690}, "hair": 0, "skin": "#f1c9a5", "match": ["*developer*", "*engineer*", "*frontend*", "*backend*", "*web*"]},
+    {"id": "data-analyst", "name": "Data", "title": "Phân tích dữ liệu", "dept": "engineering", "desk": {"x": 390, "y": 690}, "hair": 1, "skin": "#d9a679", "match": ["*data*", "*analyst*", "*analytics*", "*report*"]},
+    {"id": "qa-reviewer", "name": "QA", "title": "Kiểm định chất lượng", "dept": "engineering", "desk": {"x": 535, "y": 690}, "hair": 2, "skin": "#e8b98f", "match": ["*qa*", "*review*", "*test*"]},
+    {"id": "sales-lead", "name": "TP Kinh doanh", "title": "Trưởng phòng Kinh doanh", "dept": "sales", "desk": {"x": 715, "y": 690}, "hair": 0, "skin": "#f1c9a5", "lead": true, "match": ["*sales*"]},
+    {"id": "customer-support", "name": "CSKH", "title": "Chăm sóc khách hàng", "dept": "sales", "desk": {"x": 850, "y": 690}, "hair": 1, "skin": "#d9a679", "match": ["*support*", "*cskh*", "*customer*"]},
+    {"id": "operations-lead", "name": "TP Vận hành", "title": "Trưởng phòng Vận hành", "dept": "operations", "desk": {"x": 1020, "y": 690}, "hair": 2, "skin": "#e8b98f", "lead": true, "match": ["*operations*", "*ops-*"]},
+    {"id": "finance-analyst", "name": "Tài chính", "title": "Chuyên viên tài chính", "dept": "operations", "desk": {"x": 1150, "y": 690}, "hair": 0, "skin": "#f1c9a5", "match": ["*finance*", "*accounting*", "*budget*"]},
+    {"id": "legal-counsel", "name": "Pháp chế", "title": "Chuyên viên pháp chế", "dept": "operations", "desk": {"x": 1280, "y": 690}, "hair": 1, "skin": "#d9a679", "match": ["*legal*", "*compliance*"]},
+    {"id": "hr-specialist", "name": "Nhân sự", "title": "Chuyên viên nhân sự", "dept": "operations", "desk": {"x": 1410, "y": 690}, "hair": 2, "skin": "#e8b98f", "match": ["*hr-*", "*people*", "*recruit*"]}
   ]
 }

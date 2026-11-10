@@ -1,9 +1,18 @@
 {
-  "name": "office",
-  "displayName": "AI Office",
-  "version": "0.1.0",
-  "description": "Biến Claude Code thành một văn phòng: bạn là sếp, Claude là giám đốc điều hành, các subagent là nhân viên content, design, web, SEO, ads... kèm dashboard văn phòng trực quan chạy local.",
-  "author": { "name": "AI Office contributors" },
+  "name": "t-outbox",
+  "displayName": "T-outbox",
+  "version": "0.2.0",
+  "description": "Biến Claude Code thành một công ty: bạn là sếp, Claude là CEO, các subagent là trưởng phòng và nhân viên. Kèm văn phòng 3D chạy local, đồng phục theo brand của bạn.",
+  "author": {
+    "name": "T-outbox contributors"
+  },
   "license": "MIT",
-  "keywords": ["office", "subagents", "marketing", "dashboard", "vietnamese"]
+  "keywords": [
+    "office",
+    "subagents",
+    "company",
+    "dashboard",
+    "3d",
+    "vietnamese"
+  ]
 }

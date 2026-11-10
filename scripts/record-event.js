@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Hook của AI Office: đọc payload hook từ stdin, ghi một dòng sự kiện gọn vào
-// <project>/.ai-office/events.jsonl. Không bao giờ chặn Claude: mọi lỗi đều thoát mã 0.
+// Hook của T-outbox: đọc payload hook từ stdin, ghi một dòng sự kiện gọn vào
+// <project>/.t-outbox/events.jsonl. Không bao giờ chặn Claude: mọi lỗi đều thoát mã 0.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -8,12 +8,16 @@ const path = require('path');
 const MAX_LOG_BYTES = 5 * 1024 * 1024;
 
 const OFFICE_CONTEXT = [
-  'Plugin AI Office đang bật. Người dùng là sếp, bạn là giám đốc điều hành của văn phòng.',
-  'Nhân viên là các subagent có tên bắt đầu bằng "office:" (strategist, researcher, content-writer, designer,',
-  'web-developer, seo-specialist, ads-specialist, data-analyst, qa-reviewer) cùng các subagent khác của dự án.',
-  'Khi việc thuộc chuyên môn của một nhân viên, hãy giao cho người đó bằng Agent tool với mô tả việc ngắn gọn, rõ đầu ra;',
-  'việc độc lập thì giao song song; việc lớn thì cho office:qa-reviewer soát trước khi báo cáo sếp.',
-  'Việc nhỏ, hỏi đáp nhanh thì tự làm, không cần giao. Sếp xem văn phòng bằng lệnh /office:open.',
+  'Plugin T-outbox đang bật. Người dùng là sếp (chủ doanh nghiệp), bạn là CEO điều hành công ty.',
+  'Nhân sự là các subagent có tên bắt đầu bằng "t-outbox:", chia theo phòng ban, mỗi phòng có trưởng phòng:',
+  'Marketing (marketing-lead; content-writer, seo-specialist, ads-specialist);',
+  'Sản phẩm & Thiết kế (product-manager; designer, researcher);',
+  'Kỹ thuật & Dữ liệu (tech-lead; web-developer, data-analyst, qa-reviewer);',
+  'Kinh doanh & CSKH (sales-lead; customer-support);',
+  'Vận hành (operations-lead; finance-analyst, legal-counsel, hr-specialist).',
+  'Việc cần nhiều người trong một phòng thì giao cho trưởng phòng để họ tự chia; việc gọn của một chuyên môn thì giao thẳng cho nhân viên đó.',
+  'Giao bằng Agent tool với mô tả ngắn, rõ đầu ra; việc độc lập thì giao song song; việc lớn thì cho t-outbox:qa-reviewer soát trước khi báo cáo sếp.',
+  'Việc nhỏ, hỏi đáp nhanh thì tự làm, không cần giao. Sếp xem văn phòng bằng lệnh /t-outbox:open.',
 ].join(' ');
 
 function clip(value, max) {
@@ -65,6 +69,8 @@ function build(p, projectDir) {
       }
       return { ...ev, e: 'tool', tool: name, detail: toolDetail(name, p.tool_input, projectDir) };
     }
+    case 'PermissionRequest':
+      return { ...ev, e: 'wait', tool: p.tool_name };
     case 'SubagentStart':
       return p.agent_type ? { ...ev, e: 'agent_start' } : null;
     case 'SubagentStop':
@@ -79,14 +85,14 @@ function build(p, projectDir) {
 }
 
 function main() {
-  if (process.env.AI_OFFICE_DISABLED === '1') return;
+  if (process.env.T_OUTBOX_DISABLED === '1') return;
   let raw = '';
   try { raw = fs.readFileSync(0, 'utf8'); } catch { return; }
   let p;
   try { p = JSON.parse(raw); } catch { return; }
 
   const projectDir = process.env.CLAUDE_PROJECT_DIR || p.cwd || process.cwd();
-  const dir = path.join(projectDir, '.ai-office');
+  const dir = path.join(projectDir, '.t-outbox');
   const file = path.join(dir, 'events.jsonl');
   const ev = build(p, projectDir);
 
