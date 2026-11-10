@@ -9,6 +9,7 @@ const DEMO_LOOP_PAUSE_MS = 6000;
 const FEED_MAX = 80;
 const TASKS_MAX = 40;
 const REAL_EVENTS_MAX = 3000;
+const BAND_H = 124;                 // chiều cao mỗi tầng trên sơ đồ 2D
 const GUEST_COLORS = ['#6b7a90', '#9a6b4f', '#4f8a6b', '#8a4f7d', '#4f6b9a', '#9a8a4f'];
 const FEED_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit', 'WebSearch', 'WebFetch', 'Skill']);
 const ASSIST_MS = 6000;               // chế độ sôi nổi: nhân viên hỗ trợ CEO hiện ở bàn bao lâu
@@ -37,8 +38,7 @@ const S = {
   sessions: new Map(),  // sid -> màu, để phân biệt nhiều phiên Claude Code cùng lúc
   openTasks: new Set(),
   taskSeq: 0,
-  loungeCount: 0,
-  guestCount: 0,
+  slots: {},            // số bàn đã xếp trên mỗi tầng
 };
 let view = null;
 let demoTimer = null;
@@ -116,7 +116,7 @@ function createStaff(def) {
   const r = S.roster;
   const dept = (r.departments || []).find((d) => d.id === def.dept);
   const s = {
-    skin: '#f1c9a5', hair: 0, title: 'Cộng tác viên', ...def,
+    title: 'Cộng tác viên', ...def,
     name: def.name || def.id,
     deptName: dept ? dept.name : 'Cộng tác viên',
     instances: new Map(), status: 'idle', activity: '', alert: false, assist: false, lastTs: 0, doneAt: 0,
@@ -124,24 +124,16 @@ function createStaff(def) {
   // Màu nhận diện là màu phòng ban; áo đồng phục thì theo brand (do view vẽ).
   if (!s.color) s.color = dept ? dept.color : GUEST_COLORS[hashIndex(s.id, GUEST_COLORS.length)];
   s.matchers = (Array.isArray(def.match) ? def.match : []).map(glob);
-  if (!s.desk) { // chưa có bàn riêng: ngồi khu cộng tác viên
-    const desks = r.guestDesks || [];
-    const n = Math.max(1, desks.length);
-    const base = desks[S.guestCount % n] || { x: 900, y: 420 };
-    const lap = Math.floor(S.guestCount / n);
-    s.desk = { x: base.x - lap * 14, y: base.y - lap * 95 };
-    S.guestCount++;
-  }
-  if (!s.fixed && !s.off) {
-    // Chỗ đứng ở pantry: lưới có xê dịch nhẹ theo tên để trông tự nhiên, không thẳng hàng.
-    const L = r.loungeSpots;
-    const i = S.loungeCount++;
-    const row = Math.floor(i / L.columns);
-    s.lounge = {
-      x: L.x + (i % L.columns) * L.stepX + (row % 2) * L.stepX * 0.45 + (hashIndex(s.id, 17) - 8) * 1.6,
-      y: L.y + row * L.stepY + (hashIndex(s.id + 'y', 15) - 7) * 1.8,
-    };
-  }
+  // Mỗi phòng ban ở một tầng; người chưa thuộc phòng nào (cộng tác viên) ngồi ở sảnh tầng trệt.
+  const floors = r.floors || [];
+  let floor = floors.findIndex((f) => f.dept && f.dept === s.dept);
+  if (floor < 0) floor = Math.max(0, floors.findIndex((f) => f.kind === 'lobby'));
+  s.floor = floor;
+  s.slot = S.slots[floor] = (S.slots[floor] ?? -1) + 1;
+  // Tọa độ cho sơ đồ 2D dự phòng: mỗi tầng là một dải ngang, tầng cao nằm trên.
+  const y0 = (floors.length - 1 - floor) * BAND_H;
+  s.desk = { x: 250 + s.slot * 165, y: y0 + 92 };
+  s.lounge = { x: 990 + (s.slot % 4) * 52, y: y0 + 62 + (hashIndex(s.id, 5) - 2) * 3 };
   S.staff.set(s.id, s);
   if (view) view.addStaff(s);
   return s;
@@ -345,7 +337,7 @@ function render() {
   $('depts').innerHTML = (S.roster.departments || []).map((d) => {
     const team = staff.filter((s) => s.dept === d.id && !s.off);
     const busy = team.filter((s) => s.status === 'working').length;
-    return `<li style="--c:${esc(d.color)}" data-dept="${esc(d.id)}" title="Bấm để xem phòng này"><span class="dept-name">${esc(d.name)}</span>
+    return `<li style="--c:${esc(d.color)}" data-dept="${esc(d.id)}" title="Bấm để xem tầng này"><span class="dept-name">${esc(d.name)}</span>
       <span class="dept-dots">${team.map((s) => `<i class="${s.status}" title="${esc(s.name)}"></i>`).join('')}</span>
       <span class="dept-count">${busy}/${team.length}</span></li>`;
   }).join('');
@@ -424,6 +416,19 @@ function idleLongEnough(now) {
   return now - S.lastRealAt > DEMO_AFTER_IDLE_MS && ![...S.staff.values()].some((s) => s.status === 'working');
 }
 
+// Sơ đồ 2D: tòa nhà nhìn theo mặt cắt, mỗi tầng một dải.
+function layout2d() {
+  const floors = S.roster.floors || [];
+  const depts = S.roster.departments || [];
+  return {
+    floor: { width: 1200, height: floors.length * BAND_H + 8 },
+    rooms: floors.map((f, i) => {
+      const d = depts.find((k) => k.id === f.dept);
+      return { x: 8, y: (floors.length - 1 - i) * BAND_H + 8, w: 1184, h: BAND_H - 8, name: `Tầng ${i + 1} · ${f.name || (d ? d.name : f.id)}` };
+    }),
+  };
+}
+
 // ---- View ---------------------------------------------------------------------------------
 async function useView(kind) {
   const stage = $('stage');
@@ -440,7 +445,7 @@ async function useView(kind) {
       kind = '2d';
     }
   }
-  if (!view) view = new View2D(stage, S.roster);
+  if (!view) view = new View2D(stage, layout2d());
   stage.dataset.view = kind;
   window.tOutboxView = view; // tiện kiểm thử và gỡ lỗi từ console
   $('btn-view').textContent = kind === '3d' ? 'Xem 2D' : 'Xem 3D';
@@ -544,7 +549,7 @@ async function start() {
   // Bấm tên phòng ban để lướt máy quay tới phòng đó.
   $('depts').addEventListener('click', (e) => {
     const li = e.target.closest('[data-dept]');
-    if (li && view.focusRoom) { clearTimeout(followTimer); view.focusRoom(li.dataset.dept); }
+    if (li && view.focusFloor) { clearTimeout(followTimer); view.focusFloor(li.dataset.dept); }
   });
   $('btn-night').onclick = () => {
     const on = pref('night', '0') !== '1';

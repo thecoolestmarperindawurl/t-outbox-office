@@ -6,16 +6,14 @@ function esc(s) {
 }
 
 function avatarSvg(s) {
-  const hairColor = ['#3a2a20', '#1f1f24', '#6b4226'][(s.hair ?? 0) % 3];
-  const hair = [
-    '<path d="M8 19a14 14 0 0 1 28 0c-4-5-9-7-14-7s-10 2-14 7z"/>',
-    '<path d="M7 30V18a15 15 0 0 1 30 0v12h-4V19c-3-4-7-6-11-6s-8 2-11 6v11z"/>',
-    '<circle cx="22" cy="3.5" r="5"/><path d="M8 19a14 14 0 0 1 28 0c-4-5-9-7-14-7s-10 2-14 7z"/>',
-  ][(s.hair ?? 0) % 3];
+  const hairColor = /^#[0-9a-f]{6}$/i.test(s.hair) ? s.hair : '#3a2a20';
+  const hair = s.gender === 'f'
+    ? '<path d="M7 30V18a15 15 0 0 1 30 0v12h-4V19c-3-4-7-6-11-6s-8 2-11 6v11z"/>'
+    : '<path d="M8 19a14 14 0 0 1 28 0c-4-5-9-7-14-7s-10 2-14 7z"/>';
   return `<svg viewBox="0 -2 44 60" width="44" height="60" aria-hidden="true">
     <rect x="5" y="31" width="34" height="27" rx="11" fill="${esc(s.color)}"/>
     <circle cx="22" cy="19" r="13" fill="${esc(s.skin || '#f1c9a5')}"/>
-    <g fill="${hairColor}">${hair}</g>
+    <g fill="${esc(hairColor)}">${hair}</g>
     <circle cx="17" cy="21" r="1.6" fill="#2a2a2a"/><circle cx="27" cy="21" r="1.6" fill="#2a2a2a"/>
     <path d="M18.5 26.5q3.5 2.5 7 0" fill="none" stroke="#2a2a2a" stroke-width="1.3" stroke-linecap="round"/>
   </svg>`;
@@ -40,8 +38,7 @@ export class View2D {
       const el = document.createElement('div');
       el.className = 'room ' + (room.kind || '');
       Object.assign(el.style, { left: room.x + 'px', top: room.y + 'px', width: room.w + 'px', height: room.h + 'px' });
-      el.innerHTML = `<span class="room-name">${esc(room.name)}</span>` +
-        (room.kind === 'lounge' ? '<div class="sofa"></div><div class="coffee"><b></b></div><div class="plant"></div>' : '');
+      el.innerHTML = `<span class="room-name">${esc(room.name)}</span>`;
       this.floor.appendChild(el);
     }
     this.resize();

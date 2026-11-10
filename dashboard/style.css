@@ -99,10 +99,10 @@ body {
 
 .stage3d {
   position: relative; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow);
-  background: radial-gradient(120% 90% at 50% 20%, var(--panel), var(--floor));
+  background: linear-gradient(#b9dcf6 0%, #dcecf7 45%, #f1ebdf 100%);
   touch-action: none;
 }
-.stage3d.night { background: radial-gradient(120% 90% at 50% 20%, #2a3150, #12141f); }
+.stage3d.night { background: linear-gradient(#0d1330 0%, #1c2550 55%, #2c2f4a 100%); }
 .stage3d canvas { display: block; cursor: grab; }
 .stage3d canvas:active { cursor: grabbing; }
 .labels3d { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -125,7 +125,7 @@ body {
 }
 .name3 { transform: translate(-50%, 0); font-size: 10.5px; color: #5c4e38; opacity: 0; transition: opacity .2s; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
 .labels3d.near .name3.show { opacity: 1; }
-.labels3d.small:not(.near) .plate3 { display: none !important; }
+.labels3d:not(.near) .plate3 { display: none !important; }
 .plate3.vacant { border-left-color: #9a9a9a; color: var(--muted); font-style: italic; }
 
 /* ---- Phòng ---- */
