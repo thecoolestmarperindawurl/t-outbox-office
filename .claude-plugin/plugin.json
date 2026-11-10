@@ -1,0 +1,9 @@
+{
+  "name": "office",
+  "displayName": "AI Office",
+  "version": "0.1.0",
+  "description": "Biến Claude Code thành một văn phòng: bạn là sếp, Claude là giám đốc điều hành, các subagent là nhân viên content, design, web, SEO, ads... kèm dashboard văn phòng trực quan chạy local.",
+  "author": { "name": "AI Office contributors" },
+  "license": "MIT",
+  "keywords": ["office", "subagents", "marketing", "dashboard", "vietnamese"]
+}

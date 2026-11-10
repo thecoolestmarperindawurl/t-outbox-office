@@ -1,0 +1,13 @@
+{
+  "name": "ai-office",
+  "description": "Văn phòng AI cho người dùng Claude Code: đội nhân viên subagent và dashboard văn phòng trực quan.",
+  "owner": { "name": "AI Office contributors" },
+  "plugins": [
+    {
+      "name": "office",
+      "source": "./",
+      "description": "Đội nhân viên AI (content, design, web, SEO, ads, data, QA...) và dashboard văn phòng theo dõi họ làm việc.",
+      "category": "productivity"
+    }
+  ]
+}

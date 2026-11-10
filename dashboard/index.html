@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Office</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <h1>AI Office</h1>
+      <span class="project" id="project"></span>
+    </div>
+    <div class="stats">
+      <span class="pill"><b id="stat-working">0</b> đang làm việc</span>
+      <span class="pill"><b id="stat-done">0</b> việc đã xong</span>
+      <span class="pill live" id="live"><i></i><span id="live-text">Đang kết nối</span></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="floor-wrap" id="floor-wrap" aria-label="Sơ đồ văn phòng">
+      <div class="floor" id="floor"></div>
+      <div id="floor-sizer"></div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Bảng công việc</h2>
+        <ul class="tasks" id="tasks"></ul>
+      </section>
+      <section class="panel">
+        <h2>Nhật ký văn phòng</h2>
+        <ul class="feed" id="feed"></ul>
+      </section>
+    </aside>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

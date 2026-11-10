@@ -1,0 +1,29 @@
+{
+  "floor": { "width": 1200, "height": 720 },
+  "rooms": [
+    { "id": "director", "name": "Phòng Giám đốc", "x": 16, "y": 16, "w": 240, "h": 210 },
+    { "id": "strategy", "name": "Chiến lược & Nghiên cứu", "x": 272, "y": 16, "w": 440, "h": 210 },
+    { "id": "creative", "name": "Sáng tạo", "x": 728, "y": 16, "w": 456, "h": 210 },
+    { "id": "lounge", "name": "Pantry", "x": 16, "y": 242, "w": 560, "h": 236, "kind": "lounge" },
+    { "id": "guests", "name": "Khu cộng tác viên", "x": 592, "y": 242, "w": 592, "h": 236, "kind": "guests" },
+    { "id": "tech", "name": "Kỹ thuật", "x": 16, "y": 494, "w": 380, "h": 210 },
+    { "id": "performance", "name": "Performance", "x": 412, "y": 494, "w": 380, "h": 210 },
+    { "id": "qa", "name": "Kiểm định chất lượng", "x": 808, "y": 494, "w": 376, "h": 210 }
+  ],
+  "guestDesks": [
+    { "x": 680, "y": 420 }, { "x": 820, "y": 420 }, { "x": 960, "y": 420 }, { "x": 1100, "y": 420 }
+  ],
+  "loungeSpots": { "x": 64, "y": 368, "stepX": 56, "stepY": 72, "columns": 9 },
+  "staff": [
+    { "id": "manager", "name": "Giám đốc", "title": "Điều hành (Claude chính)", "color": "#3b4a6b", "hair": 0, "skin": "#f1c9a5", "desk": { "x": 136, "y": 170 }, "fixed": true },
+    { "id": "strategist", "name": "Chiến lược", "title": "Trưởng phòng chiến lược", "color": "#7c5cbf", "hair": 1, "skin": "#f1c9a5", "desk": { "x": 382, "y": 170 } },
+    { "id": "researcher", "name": "Nghiên cứu", "title": "Nghiên cứu thị trường", "color": "#2f8f83", "hair": 0, "skin": "#d9a679", "desk": { "x": 602, "y": 170 } },
+    { "id": "content-writer", "name": "Content", "title": "Chuyên viên nội dung", "color": "#d9772b", "hair": 2, "skin": "#f1c9a5", "desk": { "x": 842, "y": 170 } },
+    { "id": "designer", "name": "Design", "title": "Thiết kế", "color": "#c8497a", "hair": 1, "skin": "#e8b98f", "desk": { "x": 1070, "y": 170 } },
+    { "id": "web-developer", "name": "Web", "title": "Lập trình web", "color": "#3273c4", "hair": 0, "skin": "#e8b98f", "desk": { "x": 116, "y": 650 } },
+    { "id": "seo-specialist", "name": "SEO", "title": "Chuyên viên SEO", "color": "#5a8f2f", "hair": 2, "skin": "#d9a679", "desk": { "x": 296, "y": 650 } },
+    { "id": "ads-specialist", "name": "Ads", "title": "Quảng cáo trả phí", "color": "#c2452f", "hair": 0, "skin": "#f1c9a5", "desk": { "x": 512, "y": 650 } },
+    { "id": "data-analyst", "name": "Data", "title": "Phân tích dữ liệu", "color": "#2a8fb0", "hair": 1, "skin": "#d9a679", "desk": { "x": 692, "y": 650 } },
+    { "id": "qa-reviewer", "name": "QA", "title": "Kiểm định chất lượng", "color": "#8a6d1f", "hair": 2, "skin": "#e8b98f", "desk": { "x": 996, "y": 650 } }
+  ]
+}
