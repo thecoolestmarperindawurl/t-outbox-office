@@ -41,6 +41,8 @@ const S = {
   slots: {},            // số bàn đã xếp trên mỗi tầng
 };
 let view = null;
+// WEB: bản demo tĩnh trên website (không có server local): đọc dữ liệu mẫu từ data/ và chỉ chạy kịch bản diễn thử.
+let WEB = false;
 let demoTimer = null;
 let demoScript = null;
 let followAt = 0;
@@ -365,7 +367,7 @@ function setBadge() {
 async function startDemo() {
   if (S.mode === 'demo') return;
   if (!demoScript) {
-    try { demoScript = await (await fetch('/api/demo')).json(); } catch { demoScript = []; }
+    try { demoScript = await (await fetch(WEB ? 'data/demo-script.json' : 'api/demo')).json(); } catch { demoScript = []; }
   }
   if (!demoScript.length || S.mode === 'demo') return;
   S.mode = 'demo';
@@ -492,7 +494,7 @@ function setupCustomize() {
       staff: [...f.querySelectorAll('[name="staff-name"]')].map((el) => ({ id: el.dataset.id, name: el.value, off: off.get(el.dataset.id) })),
     };
     try {
-      const res = await fetch('/api/customize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch('api/customize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error((await res.json()).error || res.status);
       location.reload();
     } catch (err) {
@@ -502,8 +504,21 @@ function setupCustomize() {
 }
 
 // ---- Khởi động ------------------------------------------------------------------------------
+// Có server local thì đọc cấu hình qua API; không có (bản demo trên web) thì đọc dữ liệu mẫu đi kèm.
+async function loadConfig() {
+  // Bản dựng cho website (scripts/build-web-demo.sh) gắn <meta name="t-outbox-mode" content="web">: bỏ qua bước hỏi server.
+  const webBuild = document.querySelector('meta[name="t-outbox-mode"]')?.content === 'web';
+  if (!webBuild) try {
+    const res = await fetch('api/roster', { cache: 'no-store' });
+    if (res.ok && /json/.test(res.headers.get('content-type') || '')) return await res.json();
+  } catch { /* không có server */ }
+  WEB = true;
+  const [roster, brand] = await Promise.all(['data/roster.json', 'data/brand.json'].map((u) => fetch(u).then((r) => r.json())));
+  return { ...roster, brand, project: 'Demo' };
+}
+
 async function start() {
-  S.roster = await (await fetch('/api/roster')).json();
+  S.roster = await loadConfig();
   const brand = S.roster.brand || {};
   $('project').textContent = S.roster.project || '';
   $('brand-name').textContent = brand.name || 'T-outbox';
@@ -568,9 +583,18 @@ async function start() {
     if (!id) return;
     if (e.target.open) S.openTasks.add(id); else S.openTasks.delete(id);
   }, true);
+  if (WEB) { // bản demo trên web: không có sự kiện thật, chỉ diễn thử
+    $('btn-customize').hidden = true;
+    $('demo-note').textContent = 'Bản demo trên web: đội AI mẫu đang diễn một buổi làm việc. Cài plugin T-outbox vào Claude Code để xem đội của bạn làm việc thật.';
+    S.ready = true;
+    requestAnimationFrame(() => { S.animate = true; startDemo(); });
+    setInterval(() => { if (settle(Date.now())) render(); else tickClocks(); }, 1000);
+    window.addEventListener('resize', () => view.resize());
+    return;
+  }
   setupCustomize();
 
-  const es = new EventSource('/api/events');
+  const es = new EventSource('api/events');
   es.onmessage = (m) => {
     let ev;
     try { ev = JSON.parse(m.data); } catch { return; }

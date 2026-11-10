@@ -212,6 +212,18 @@ Tạo `.t-outbox/roster.json` trong dự án và ghi đè theo `id`, hoặc thê
 
 Hồ sơ từng nhân viên là một file tiếng Việt trong `agents/`; sửa trực tiếp để đổi cách làm việc. Kích thước tòa nhà, thứ tự tầng và phòng ban nằm trong `office/roster.json`.
 
+## Bản demo trên web
+
+Xem thử không cần cài: https://lanhmar.id.vn/apps/t-outbox/ (đội AI mẫu diễn một buổi làm việc, brand LanhMar).
+
+Muốn đặt bản demo lên website của bạn:
+
+```bash
+scripts/build-web-demo.sh <thư mục trên website>
+```
+
+Script chép dashboard và dữ liệu mẫu (`office/roster.json`, `brand.json`, `demo-script.json`) vào thư mục đích. Bản này là trang tĩnh: chỉ chạy kịch bản diễn thử, không đọc phiên Claude Code thật và không có nút Tùy biến.
+
 ## Cách hoạt động
 
 ```

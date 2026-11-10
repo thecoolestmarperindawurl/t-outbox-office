@@ -76,9 +76,9 @@ export class View3D {
     const loader = new GLTFLoader();
     const cast = Object.keys(LOOKS);
     const [people, furniture, cars] = await Promise.all([
-      Promise.all(cast.map((name) => loader.loadAsync(`/assets/people/${name}.glb`))),
-      Promise.all(FURNITURE.map((name) => loader.loadAsync(`/assets/office/${name}.glb`))),
-      Promise.all(CARS.map((name) => loader.loadAsync(`/assets/cars/${name}.glb`))),
+      Promise.all(cast.map((name) => loader.loadAsync(`assets/people/${name}.glb`))),
+      Promise.all(FURNITURE.map((name) => loader.loadAsync(`assets/office/${name}.glb`))),
+      Promise.all(CARS.map((name) => loader.loadAsync(`assets/cars/${name}.glb`))),
     ]);
     return new View3D(container, roster, {
       people: Object.fromEntries(cast.map((name, i) => [name, people[i]])),
