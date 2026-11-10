@@ -8,13 +8,13 @@ Biến Claude Code thành một tập đoàn. Bạn là sếp, Claude là CEO, c
 | --- | --- |
 | ![Các tầng phòng ban](docs/floor.png) | ![Trung tâm hội nghị](docs/meeting.png) |
 
-| Thang máy chở người | Canteen |
+| Hai thang máy | Nhân viên lái xe ra khỏi hầm |
 | --- | --- |
-| ![Thang máy](docs/elevator.png) | ![Canteen](docs/canteen.png) |
+| ![Thang máy](docs/elevator.png) | ![Xe lên ram](docs/parking.png) |
 
-| Sảnh, lễ tân, bảo vệ | Hầm đỗ xe |
+| Canteen | Sảnh, lễ tân, bảo vệ |
 | --- | --- |
-| ![Sảnh](docs/lobby.png) | ![Hầm đỗ xe](docs/parking.png) |
+| ![Canteen](docs/canteen.png) | ![Sảnh](docs/lobby.png) |
 
 Ảnh chụp ở chế độ diễn thử, nội dung công việc trong ảnh là ví dụ minh họa.
 
@@ -52,7 +52,7 @@ Các tầng xếp theo logic của một trụ sở thật, từ khu công cộn
 
 Hạ tầng chung của tòa nhà:
 
-- **Thang máy kính** trước mặt tiền bên trái, chạy từ hầm B1 lên tầng cao nhất. Thang phục vụ theo lượt gọi: tới tầng có người chờ, chở tối đa 4 người, trả ở tầng gần nhất trước.
+- **Hai thang máy kính** trước mặt tiền bên trái, chạy từ hầm B1 lên tầng cao nhất. Hai thang chia nhau lượt gọi: mỗi thang tới tầng có người chờ mà thang kia chưa nhận, chở tối đa 4 người, trả ở tầng gần nhất trước.
 - **Thang bộ thoát hiểm** bằng thép ở hông phải, chạy suốt chiều cao tòa nhà.
 - **Phòng cháy chữa cháy** ở mọi tầng: tủ vòi và bình chữa cháy cạnh thang máy, chuông báo, đường ống sprinkler dưới trần, biển EXIT; ngoài sân có trụ nước và biển điểm tập kết.
 - **An ninh:** bảo vệ ở sảnh và ở chốt hầm xe, camera ở sảnh và hầm, cổng kiểm soát trước thang máy.
@@ -67,7 +67,9 @@ Hạ tầng chung của tòa nhà:
 | Trưởng phòng chia việc cho người trong phòng | Cả hai lên phòng họp lớn ở trung tâm hội nghị: trưởng phòng đứng trình bày, nhân viên ngồi nghe, họp xong về bàn làm |
 | Được giao việc cùng tầng trong các trường hợp còn lại | Tờ giấy giao việc bay từ người giao sang bàn người nhận |
 | Đang rảnh | Đứng ở góc tiếp khách của tầng; thỉnh thoảng xuống canteen đứng quầy hoặc ngồi góc cà phê một lúc rồi quay lên |
+| Đang rảnh (ít gặp hơn) | Đi thang máy xuống hầm B1, lấy xe, chạy qua barie (barie tự nâng) lên ram ra đường; một lúc sau lái về, lùi vào ô đỗ rồi đi thang lên lại. Tối đa hai xe ra ngoài cùng lúc |
 | Đang ở canteen thì có việc | Bỏ dở giờ nghỉ, đi thang máy về bàn |
+| Đang lái xe ở ngoài thì có việc | Quay xe về ngay, đỗ xe rồi lên bàn; bong bóng việc đi theo xe |
 
 Nhân viên đi theo hành lang và sảnh thang của từng tầng nên không xuyên qua bàn ghế hay phòng kính. Việc đi lại chỉ là phần trình diễn: bong bóng, bảng công việc và nhật ký vẫn phản ánh ngay trạng thái thật của subagent, kể cả khi nhân vật còn đang trên đường về bàn.
 
@@ -226,8 +228,9 @@ Repo dùng 9 trong 13 nhân vật đời thường của bộ gốc (thêm `male
 - Phiên bị tắt đột ngột: nhân viên của phiên đó ở lại bàn tối đa 30 phút rồi mới về góc tiếp khách.
 - Nhân vật theo phong cách khối vuông đơn giản; có 8 dáng nhân viên.
 - Nhân vật có thể tới bàn trễ hơn trạng thái thật vài chục giây vì phải đi thang máy và họp; việc ngắn có thể xong trước khi nhân vật kịp ngồi vào bàn.
-- Chỉ có một thang máy và thang bộ chưa được dùng; lúc nhiều người được giao việc cùng lúc sẽ có hàng chờ thang.
-- Chỉ phòng họp lớn và canteen được dùng; phòng họp vừa, phòng nhỏ, khu đào tạo và hầm xe chưa có người sử dụng.
+- Thang bộ chưa được dùng; lúc rất nhiều người được giao việc cùng lúc vẫn có thể có hàng chờ thang.
+- Phòng họp vừa, phòng nhỏ và khu đào tạo chưa có người sử dụng.
+- Xe của nhân viên không tránh xe đang chạy trên đường nên đôi khi đi xuyên qua nhau.
 - Bản 2D dự phòng chỉ vẽ các tầng dạng dải, không có hầm xe và nội thất riêng từng tầng.
 - Nhãn tên không bị che bởi sàn hay tường nên đôi khi hiện xuyên qua vật cản.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.

@@ -15,6 +15,8 @@ const AISLE_Z = 3.75;         // lối đi trước dãy bàn
 const WALK_SPEED = 2.3;       // đơn vị mỗi giây
 const LIFT_SPEED = 5;         // tốc độ cabin thang máy
 const LIFT_SEATS = 4;         // số người tối đa trong cabin
+const LIFT_X = [0.9, 2.5];    // hai trục thang máy cạnh nhau trước mặt tiền
+const CAR_SPEED = 4.2;        // tốc độ xe trong hầm và trên ram
 const FADE = 0.22;
 const PERSON_H = 0.67 * PS;
 const CONFETTI = ['#e4572e', '#f2b134', '#3f9a5a', '#3273c4', '#c8497a', '#7c5cbf'];
@@ -97,6 +99,8 @@ export class View3D {
     this.textures = new Map();
     this.npcs = [];
     this.traffic = [];
+    this.parked = [];   // xe trong hầm, nhân viên mượn để ra ngoài
+    this.drives = [];   // các chuyến xe đang chạy
     this.center = new THREE.Vector3(this.FW / 2, (this.H - this.FH) / 2 + 0.6, this.FD / 2 + 1.5);
     this.userMoved = false;
     this.fitDist = 40;
@@ -331,7 +335,11 @@ export class View3D {
     this.box(1.24, 0.6, 0.9, null, bx, yB + 1.1, bz + 0.2, this.scene, { material: this.glass, transparent: true });
     this.box(1.5, 0.12, 1.5, brand.primary, bx, yB + 1.56, bz);
     this.box(0.16, 1.0, 0.16, '#f2c14e', rx0 + 0.15, yB + 0.5, zCourt - 0.5);
-    for (let i = 0; i < 6; i++) this.box(0.6, 0.09, 0.09, i % 2 ? '#ffffff' : '#e0352b', rx0 + 0.5 + i * 0.6, yB + 0.95, zCourt - 0.5, this.scene, { noShadow: true });
+    this.barrier = new THREE.Group(); // cần barie xoay quanh trụ, tự nâng khi có xe tới
+    this.barrier.position.set(rx0 + 0.15, yB + 0.95, zCourt - 0.5);
+    this.scene.add(this.barrier);
+    for (let i = 0; i < 6; i++) this.box(0.6, 0.09, 0.09, i % 2 ? '#ffffff' : '#e0352b', 0.35 + i * 0.6, 0, 0, this.barrier, { noShadow: true });
+    this.gate = { x: (rx0 + rx1) / 2, zCourt, zStreet, laneZ: zStreet + 1.1 };
     // Đường phố trước trụ sở.
     this.box(FW + 22, 0.1, 4.2, '#4e5157', FW / 2, -0.07, zStreet + 2.1);
     for (let x = -10; x < FW + 11; x += 2.4) this.box(1.2, 0.012, 0.1, '#f3f0e6', x, -0.014, zStreet + 2.1, this.scene, { noShadow: true });
@@ -377,7 +385,7 @@ export class View3D {
     for (let i = 0; i <= cars.length; i++) this.box(0.07, 0.012, 3.6, '#f3f0e6', 0.9 + i * step, y + 0.025, 2.1, this.scene, { noShadow: true });
     cars.forEach((model, i) => {
       const x = 0.9 + (i + 0.5) * step;
-      if (model) this.prop(model, x, y + 0.02, 2.0, { length: 3.3 });
+      if (model) this.parked.push({ car: this.prop(model, x, y + 0.02, 2.0, { length: 3.3 }), x, busy: false });
       this.box(1.2, 0.012, 0.07, '#f3f0e6', x, y + 0.025, 3.9, this.scene, { noShadow: true });
     });
     const ceo = this.text('CEO', { w: 1.2, h: 0.4, color: '#f2c14e' });
@@ -482,66 +490,83 @@ export class View3D {
     this.exitSign(FW - 1.1, y + wallH - 0.34, FD - 0.5);
   }
 
-  // ---- Thang máy kính trước mặt tiền, bên trái: đón trả người thật giữa các tầng --------
+  // ---- Hai thang máy kính trước mặt tiền, bên trái: đón trả người thật giữa các tầng, kể cả hầm B1 ----
   buildElevator() {
     const { FD, FH, H, brand } = this;
-    const cx = 0.9, cz = FD + 0.95, w = 1.36, y0 = -FH, tall = H + FH + 0.5;
+    const cz = FD + 0.95, w = 1.36, y0 = -FH, tall = H + FH + 0.5;
     const steel = '#8f9aa3';
-    for (const dx of [-w / 2, w / 2]) for (const dz of [-w / 2, w / 2]) this.box(0.09, tall, 0.09, steel, cx + dx, y0 + tall / 2, cz + dz, this.scene, { mat: { metalness: 0.6, roughness: 0.35 } });
-    for (let i = -1; i <= this.floors.length; i++) {
-      const y = i * FH - 0.15;
-      this.box(w + 0.09, 0.07, 0.07, steel, cx, y, cz + w / 2);
-      this.box(0.07, 0.07, w + 0.09, steel, cx - w / 2, y, cz);
-      this.box(0.07, 0.07, w + 0.09, steel, cx + w / 2, y, cz);
+    this.lifts = [];
+    this.calls = [];
+    for (const cx of LIFT_X) {
+      for (const dx of [-w / 2, w / 2]) for (const dz of [-w / 2, w / 2]) this.box(0.09, tall, 0.09, steel, cx + dx, y0 + tall / 2, cz + dz, this.scene, { mat: { metalness: 0.6, roughness: 0.35 } });
+      for (let i = -1; i <= this.floors.length; i++) {
+        const y = i * FH - 0.15;
+        this.box(w + 0.09, 0.07, 0.07, steel, cx, y, cz + w / 2);
+        this.box(0.07, 0.07, w + 0.09, steel, cx - w / 2, y, cz);
+        this.box(0.07, 0.07, w + 0.09, steel, cx + w / 2, y, cz);
+      }
+      this.box(w, tall - 0.3, 0.03, null, cx, y0 + (tall - 0.3) / 2, cz + w / 2, this.scene, { material: this.glass, transparent: true });
+      for (const dx of [-w / 2, w / 2]) this.box(0.03, tall - 0.3, w, null, cx + dx, y0 + (tall - 0.3) / 2, cz, this.scene, { material: this.glass, transparent: true });
+      this.box(w + 0.3, 0.5, w + 0.3, '#d7d2c7', cx, H + 0.75, cz);                 // buồng máy trên mái
+      this.box(w + 0.34, 0.08, w + 0.34, brand.primary, cx, H + 1.04, cz);
+      // Cabin: sàn, trần có đèn, viền màu thương hiệu, tay vịn.
+      const cabin = new THREE.Group();
+      this.box(w - 0.2, 0.08, w - 0.2, '#59636b', 0, 0.04, 0, cabin);
+      this.box(w - 0.2, 0.08, w - 0.2, '#e9edf0', 0, 2.3, 0, cabin);
+      this.box(w - 0.5, 0.03, w - 0.5, null, 0, 2.25, 0, cabin, { material: new THREE.MeshBasicMaterial({ color: '#fff3d6', toneMapped: false }), noShadow: true });
+      this.box(w - 0.18, 0.1, w - 0.18, brand.primary, 0, 2.39, 0, cabin);
+      this.box(w - 0.3, 0.05, 0.05, '#c9ced3', 0, 1.0, w / 2 - 0.2, cabin, { mat: { metalness: 0.7, roughness: 0.3 } });
+      const light = new THREE.PointLight('#ffe9c0', 0.6, 4, 1.5);
+      light.position.set(0, 2.0, 0);
+      cabin.add(light);
+      cabin.position.set(cx, 0, cz);
+      this.scene.add(cabin);
+      this.lifts.push({ cabin, cx, cz, y: 0, floor: 0, target: null, wait: 0, riders: [] });
     }
-    this.box(w, tall - 0.3, 0.03, null, cx, y0 + (tall - 0.3) / 2, cz + w / 2, this.scene, { material: this.glass, transparent: true });
-    for (const dx of [-w / 2, w / 2]) this.box(0.03, tall - 0.3, w, null, cx + dx, y0 + (tall - 0.3) / 2, cz, this.scene, { material: this.glass, transparent: true });
-    this.box(w + 0.3, 0.5, w + 0.3, '#d7d2c7', cx, H + 0.75, cz);                 // buồng máy trên mái
-    this.box(w + 0.34, 0.08, w + 0.34, brand.primary, cx, H + 1.04, cz);
-    // Cabin: sàn, trần có đèn, viền màu thương hiệu, tay vịn.
-    const cabin = new THREE.Group();
-    this.box(w - 0.2, 0.08, w - 0.2, '#59636b', 0, 0.04, 0, cabin);
-    this.box(w - 0.2, 0.08, w - 0.2, '#e9edf0', 0, 2.3, 0, cabin);
-    this.box(w - 0.5, 0.03, w - 0.5, null, 0, 2.25, 0, cabin, { material: new THREE.MeshBasicMaterial({ color: '#fff3d6', toneMapped: false }), noShadow: true });
-    this.box(w - 0.18, 0.1, w - 0.18, brand.primary, 0, 2.39, 0, cabin);
-    this.box(w - 0.3, 0.05, 0.05, '#c9ced3', 0, 1.0, w / 2 - 0.2, cabin, { mat: { metalness: 0.7, roughness: 0.3 } });
-    const light = new THREE.PointLight('#ffe9c0', 0.6, 4, 1.5);
-    light.position.set(0, 2.0, 0);
-    cabin.add(light);
-    cabin.position.set(cx, 0, cz);
-    this.scene.add(cabin);
-    this.lift = { cabin, cx, cz, y: 0, floor: 0, target: null, wait: 0, riders: [], calls: [] };
   }
 
-  // Sảnh thang của mỗi tầng: điểm đứng chờ ngay trước cabin.
+  // Sảnh thang của mỗi tầng: điểm đứng chờ giữa hai cabin.
   liftSpot() {
-    return { x: 0.9, z: this.FD - 0.2 };
+    return { x: (LIFT_X[0] + LIFT_X[1]) / 2, z: this.FD - 0.2 };
   }
 
-  // Thang phục vụ theo lượt gọi: tới tầng có người chờ, đón tối đa LIFT_SEATS người, trả ở tầng gần nhất trước.
-  updateLift(dt) {
-    const L = this.lift;
-    if (!L) return;
+  rideOf(a) {
+    for (const L of this.lifts) { const r = L.riders.find((k) => k.a === a); if (r) return r; }
+    return null;
+  }
+
+  leaveLifts(a) {
+    for (const L of this.lifts) L.riders = L.riders.filter((r) => r.a !== a);
+    this.calls = this.calls.filter((c) => c.a !== a);
+  }
+
+  // Mỗi thang phục vụ theo lượt gọi chung: tới tầng có người chờ mà chưa thang nào nhận,
+  // đón tối đa LIFT_SEATS người, trả ở tầng gần nhất trước.
+  updateLift(L, dt) {
     const seat = () => L.riders.forEach((r, i) => {
       r.a.body.g.position.set(L.cx + (i % 2 ? 0.27 : -0.27), L.y + 0.08, L.cz + (i < 2 ? -0.22 : 0.22));
     });
     if (L.wait > 0) { L.wait -= dt; seat(); return; }
     if (L.target === null) {
       if (L.riders.length) L.target = L.riders.reduce((best, r) => (Math.abs(r.to - L.floor) < Math.abs(best - L.floor) ? r.to : best), L.riders[0].to);
-      else if (L.calls.length) L.target = L.calls[0].from;
-      else return;
+      else {
+        const taken = this.lifts.filter((k) => k !== L && k.target !== null && !k.riders.length).map((k) => k.target);
+        const call = this.calls.find((c) => !taken.includes(c.from));
+        if (!call) return;
+        L.target = call.from;
+      }
     }
     const ty = L.target * this.FH, d = ty - L.y, step = LIFT_SPEED * dt;
     if (Math.abs(d) <= step) {
       L.y = ty; L.floor = L.target; L.target = null; L.wait = 0.7;
       L.riders = L.riders.filter((r) => {
         if (r.to !== L.floor) return true;
-        const a = r.a, spot = this.liftSpot(); // ra khỏi cabin ở tầng đích
-        a.riding = false; a.floor = L.floor; a.x = spot.x; a.z = spot.z;
+        const a = r.a; // ra khỏi cabin ở tầng đích
+        a.riding = false; a.floor = L.floor; a.x = L.cx; a.z = this.FD - 0.2;
         if (a.steps[0] && a.steps[0].k === 'lift') a.steps.shift();
         return false;
       });
-      L.calls = L.calls.filter((c) => {
+      this.calls = this.calls.filter((c) => {
         if (c.from !== L.floor || L.riders.length >= LIFT_SEATS) return true;
         c.a.riding = true;
         L.riders.push(c);
@@ -596,7 +621,7 @@ export class View3D {
     this.box(FW - 0.1, 0.02, FD - 0.2, carpet, FW / 2, y + 0.01, FD / 2, this.scene, { noShadow: true });
     this.box(FW + 0.7, 0.07, 0.1, color, FW / 2, y - 0.265, FD + 0.21, this.scene, { noShadow: true });
     const sign = this.text(`TẦNG ${i + 1}  ·  ${name.toUpperCase()}`, { w: 7.4, h: 0.25, color: '#3f362a' });
-    sign.position.set(5.9, y - 0.115, FD + 0.206);
+    sign.position.set(7.3, y - 0.115, FD + 0.206);
     this.scene.add(sign);
 
     // Vách kính phía sau và bên phải, lõi thang máy bên trái, cột trước.
@@ -1172,6 +1197,7 @@ export class View3D {
   // Mỗi tầng có một hành lang ngang (zc) và một lối dọc (xr) nối hành lang với dải trống sát mặt tiền,
   // nơi có sảnh thang máy. Đường đi luôn bám theo các trục này để không xuyên qua bàn ghế, phòng kính.
   corridor(i) {
+    if (i < 0) return { zc: 5.3, xr: 4.0 };             // hầm B1: lối xe chạy trước dãy ô đỗ
     const f = this.floors[i] || {};
     if (f.kind === 'canteen') return { zc: this.FD - 0.2, xr: 0.9 };
     if (f.kind === 'meeting') return { zc: 4.15, xr: 3.7 };
@@ -1195,14 +1221,17 @@ export class View3D {
   // Lập lại lộ trình: làm hết việc vặt (đi nhận việc, họp, nghỉ ở canteen) rồi về bàn hoặc về góc chờ.
   replan(a) {
     if (a.s.fixed) return;
-    const L = this.lift;
     let floor = a.floor, at = { x: a.x, z: a.z };
     const steps = [];
-    if (a.riding) { // đang trong cabin: đi nốt chặng này rồi mới theo lộ trình mới
-      const ride = L.riders.find((r) => r.a === a);
+    const out = a.errands.find((e) => e.kind === 'out' && e.phase);
+    if (out) { // đang lái xe: chạy nốt chuyến (có việc thì quay về ngay) rồi mới theo lộ trình mới
+      steps.push({ k: 'drive', errand: out });
+      floor = -1; at = { x: out.slot.x, z: 4.3 };
+    } else if (a.riding) { // đang trong cabin: đi nốt chặng này rồi mới theo lộ trình mới
+      const ride = this.rideOf(a);
       steps.push({ k: 'lift', to: ride.to, called: true });
       floor = ride.to; at = this.liftSpot();
-    } else L.calls = L.calls.filter((c) => c.a !== a);
+    } else this.calls = this.calls.filter((c) => c.a !== a);
     const go = (dest) => {
       if (dest.floor !== floor) {
         for (const p of this.pathOnFloor(floor, at, this.liftSpot())) steps.push({ k: 'walk', ...p });
@@ -1212,10 +1241,84 @@ export class View3D {
       for (const p of this.pathOnFloor(floor, at, dest)) steps.push({ k: 'walk', ...p });
       at = { x: dest.x, z: dest.z };
     };
-    for (const e of a.errands) { go(e.dest); steps.push({ k: 'dwell', t: e.dwell, heading: e.heading, sit: e.sit, errand: e }); }
+    for (const e of a.errands) {
+      if (e === out) continue;
+      go(e.dest);
+      steps.push(e.kind === 'out' ? { k: 'drive', errand: e } : { k: 'dwell', t: e.dwell, heading: e.heading, sit: e.sit, errand: e });
+    }
     if (a.wantDesk) { go({ floor: a.home.floor, ...a.seat }); steps.push({ k: 'sit' }); }
     else { go(a.home); steps.push({ k: 'idle' }); }
     a.steps = steps;
+  }
+
+  // Lúc rảnh, thỉnh thoảng xuống hầm lấy xe ra ngoài một lúc rồi lái về.
+  sendOut(a) {
+    const slot = this.parked.find((k) => !k.busy);
+    if (!slot || this.drives.length >= 2) return;
+    slot.busy = true;
+    a.errands.push({ kind: 'out', dest: { floor: -1, x: slot.x, z: 4.3 }, slot, away: 7 + Math.random() * 7, release: () => { slot.busy = false; } });
+    this.replan(a);
+  }
+
+  // Tuyến xe từ ô đỗ ra đường: lối chạy trong hầm, sân trũng, qua barie, lên ram, rẽ ra làn gần.
+  carRoute(slot) {
+    const g = this.gate, y = -this.FH + 0.02;
+    return [
+      [slot.x, y, 2.0], [slot.x, y, 5.3], [g.x, y, 5.3], [g.x, y, g.zCourt], [g.x, -0.02, g.zStreet], [g.x + 0.6, -0.02, g.laneZ], [this.FW / 2 + this.FW / 2 + 16, -0.02, g.laneZ],
+    ].map(([x, yy, z]) => new THREE.Vector3(x, yy, z));
+  }
+
+  // Một bước lái xe của nhân viên: ra khỏi hầm, vắng mặt một lúc, lái về và lùi vào ô đỗ.
+  drive(a, e, dt) {
+    const car = e.slot.car;
+    if (!e.phase) { // lên xe
+      e.phase = 'out'; e.u = 0;
+      e.pts = this.carRoute(e.slot);
+      e.len = [0];
+      for (let i = 1; i < e.pts.length; i++) e.len.push(e.len[i - 1] + e.pts[i].distanceTo(e.pts[i - 1]));
+      a.body.g.visible = false;
+      this.drives.push(e);
+    }
+    const total = e.len[e.len.length - 1];
+    if (a.wantDesk) e.recall = true; // có việc: quay xe về ngay
+    if (e.phase === 'out') {
+      e.u += CAR_SPEED * dt;
+      if (e.recall && e.u < e.len[2]) e.phase = 'back';      // chưa ra khỏi hầm thì quay lại luôn
+      else if (e.u >= total) { e.u = total; e.phase = 'away'; }
+    } else if (e.phase === 'away') {
+      e.away -= dt;
+      if (e.away <= 0 || e.recall) e.phase = 'back';
+    } else {
+      e.u -= CAR_SPEED * dt;
+      if (e.u <= 0) { // đã vào ô: xuống xe
+        e.u = 0;
+        car.position.copy(e.pts[0]); car.rotation.set(0, 0, 0);
+        this.drives = this.drives.filter((k) => k !== e);
+        a.body.g.visible = true;
+        a.floor = -1; a.x = e.slot.x; a.z = 4.3;
+        a.body.g.position.set(a.x, -this.FH, a.z);
+        e.phase = null;
+        if (e.release) e.release();
+        a.errands = a.errands.filter((k) => k !== e);
+        a.steps.shift();
+        return;
+      }
+    }
+    let i = 1;
+    while (i < e.pts.length - 1 && e.len[i] < e.u) i++;
+    const p0 = e.pts[i - 1], p1 = e.pts[i], t = (e.u - e.len[i - 1]) / (e.len[i] - e.len[i - 1] || 1);
+    car.position.lerpVectors(p0, p1, Math.min(1, Math.max(0, t)));
+    car.visible = e.phase !== 'away';
+    // Lúc ra thì mũi xe hướng theo đường đi; lúc về cũng vậy, riêng đoạn cuối lùi vào ô nên giữ mũi quay ra.
+    const forward = e.phase === 'out' ? p1.clone().sub(p0) : p0.clone().sub(p1);
+    if (e.phase === 'back' && i === 1) forward.negate();
+    const yaw = Math.atan2(forward.x, forward.z), pitch = -Math.atan2(forward.y, Math.hypot(forward.x, forward.z));
+    let d = yaw - car.rotation.y;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    car.rotation.order = 'YXZ';
+    car.rotation.y += d * Math.min(1, dt * 6);
+    car.rotation.x += (pitch - car.rotation.x) * Math.min(1, dt * 6);
+    a.body.g.position.copy(car.position); // bong bóng việc (nếu có) đi theo xe
   }
 
   dropErrands(a, kind) {
@@ -1243,17 +1346,23 @@ export class View3D {
     a.status = s.status;
     a.alert = s.alert;
     if (!animate && !s.fixed) { // dựng lại từ lịch sử: đặt thẳng vào chỗ, không diễn cảnh đi lại
-      const L = this.lift;
-      L.riders = L.riders.filter((r) => r.a !== a);
-      L.calls = L.calls.filter((c) => c.a !== a);
-      this.dropErrands(a, 'break'); this.dropErrands(a, 'brief');
+      this.leaveLifts(a);
+      for (const e of a.errands) if (e.kind === 'out' && e.phase) { // đang lái xe: trả xe về ô ngay
+        e.slot.car.position.copy(e.pts[0]); e.slot.car.rotation.set(0, 0, 0); e.slot.car.visible = true;
+        this.drives = this.drives.filter((k) => k !== e);
+        a.body.g.visible = true;
+      }
+      this.dropErrands(a, 'break'); this.dropErrands(a, 'brief'); this.dropErrands(a, 'out');
       a.riding = false; a.floor = a.home.floor;
       const p = want ? a.seat : a.home;
       a.x = p.x; a.z = p.z;
       a.steps = [{ k: want ? 'sit' : 'idle' }];
       a.body.g.position.set(a.x, a.floor * this.FH, a.z);
     } else if (changed) {
-      if (want) this.dropErrands(a, 'break'); // có việc thì bỏ dở giờ nghỉ
+      if (want) { // có việc thì bỏ dở giờ nghỉ; chuyến xe chưa khởi hành cũng hủy
+        this.dropErrands(a, 'break');
+        a.errands = a.errands.filter((e) => { if (e.kind !== 'out' || e.phase) return true; e.release(); return false; });
+      }
       this.replan(a);
     }
     const n = s.instances.size;
@@ -1365,7 +1474,7 @@ export class View3D {
       anim = 'walk';
     } else if (step.k === 'lift') {
       if (step.to === a.floor) a.steps.shift();
-      else if (!step.called) { step.called = true; this.lift.calls.push({ a, from: a.floor, to: step.to }); }
+      else if (!step.called) { step.called = true; this.calls.push({ a, from: a.floor, to: step.to }); }
       heading = 0;                                        // đứng chờ thang, quay mặt ra cabin
     } else if (step.k === 'dwell') {
       step.t -= dt;
@@ -1377,6 +1486,8 @@ export class View3D {
         a.errands = a.errands.filter((e) => e !== step.errand);
         a.steps.shift();
       }
+    } else if (step.k === 'drive') {
+      this.drive(a, step.errand, dt);
     } else if (step.k === 'sit') {
       sitAtDesk();
     } else { // 'idle': đứng ở góc tiếp khách, nhìn quanh, thỉnh thoảng ra hiệu, rồi có lúc xuống canteen
@@ -1388,7 +1499,11 @@ export class View3D {
         if (time < a.gestureEnd) anim = a.gestureAnim;
       }
       a.rest -= dt;
-      if (a.rest < 0) { a.rest = 25 + Math.random() * 40; if (Math.random() < 0.7) this.sendToCanteen(a); }
+      if (a.rest < 0) { // hết đứng chờ: xuống canteen, lấy xe ra ngoài, hoặc đứng tiếp
+        a.rest = 25 + Math.random() * 40;
+        const pick = Math.random();
+        if (pick < 0.5) this.sendToCanteen(a); else if (pick < 0.8) this.sendOut(a);
+      }
     }
 
     this.play(a, anim);
@@ -1399,7 +1514,8 @@ export class View3D {
     }
     if (a.alert) body.alert.position.y = PERSON_H + 0.42 + Math.sin(time * 6) * 0.05;
 
-    if (!a.riding) { // trong cabin thì vị trí do thang máy đặt
+    const driving = step && step.k === 'drive' && step.errand.phase;
+    if (!a.riding && !driving) { // trong cabin hoặc trên xe thì vị trí do thang máy, xe đặt
       g.x = a.x; g.z = a.z;
       g.y += (a.floor * this.FH + lift - g.y) * Math.min(1, dt * 8);
     }
@@ -1441,7 +1557,12 @@ export class View3D {
       n.body.mixer.update(dt);
       n.body.g.rotation.y = n.heading + Math.sin(time * 0.4 + n.phase) * 0.45;
     }
-    this.updateLift(dt);
+    for (const L of this.lifts) this.updateLift(L, dt);
+    if (this.barrier) { // barie tự nâng khi có xe ở gần chân ram
+      const g = this.gate;
+      const near = this.drives.some((e) => e.phase !== 'away' && Math.abs(e.slot.car.position.x - g.x) < 2.2 && e.slot.car.position.z > g.zCourt - 5 && e.slot.car.position.z < g.zCourt + 3);
+      this.barrier.rotation.z += ((near ? 1.25 : 0) - this.barrier.rotation.z) * Math.min(1, dt * 5);
+    }
     const span = this.FW / 2 + 16;
     for (const t of this.traffic) { // xe chạy ngang qua trước trụ sở
       t.car.position.x += t.dir * t.speed * dt;
