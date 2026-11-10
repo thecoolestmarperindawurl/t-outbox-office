@@ -2,6 +2,10 @@
 
 Biến Claude Code thành một tập đoàn. Bạn là sếp, Claude là CEO, các subagent là trưởng phòng và nhân viên. Trụ sở là một tòa tháp 3D chạy trên máy bạn: mỗi phòng ban một tầng, nhân viên đi lại, ngồi bàn, giao việc cho nhau theo thời gian thực, và tất cả mặc đồng phục theo brand bạn nạp vào.
 
+[![Video giới thiệu T-outbox (40 giây), bấm để xem](docs/t-outbox-intro-poster.jpg)](docs/t-outbox-intro.mp4)
+
+▶ [Xem video giới thiệu (40 giây)](docs/t-outbox-intro.mp4) · [Xem demo 3D trên web](https://lanhmar.id.vn/apps/t-outbox/)
+
 ![Trụ sở T-outbox](docs/screenshot.png)
 
 | Tầng phòng ban | Trung tâm hội nghị |
@@ -28,7 +32,7 @@ Biến Claude Code thành một tập đoàn. Bạn là sếp, Claude là CEO, c
 | --- | --- |
 | ![Canteen](docs/canteen.png) | ![Sảnh](docs/lobby.png) |
 
-Ảnh chụp ở chế độ diễn thử, nội dung công việc trong ảnh là ví dụ minh họa.
+Ảnh và video quay ở chế độ diễn thử, nội dung công việc là ví dụ minh họa. Video quay trực tiếp từ văn phòng 3D, nhạc nền tự tổng hợp; dựng lại bằng `tools/intro-video/make.sh`.
 
 ## Cơ cấu công ty
 
