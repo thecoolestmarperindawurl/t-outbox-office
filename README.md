@@ -8,9 +8,13 @@ Biến Claude Code thành một tập đoàn. Bạn là sếp, Claude là CEO, c
 | --- | --- |
 | ![Các tầng phòng ban](docs/floor.png) | ![Trung tâm hội nghị](docs/meeting.png) |
 
-| Canteen | Sảnh, lễ tân, bảo vệ | Hầm đỗ xe |
-| --- | --- | --- |
-| ![Canteen](docs/canteen.png) | ![Sảnh](docs/lobby.png) | ![Hầm đỗ xe](docs/parking.png) |
+| Thang máy chở người | Canteen |
+| --- | --- |
+| ![Thang máy](docs/elevator.png) | ![Canteen](docs/canteen.png) |
+
+| Sảnh, lễ tân, bảo vệ | Hầm đỗ xe |
+| --- | --- |
+| ![Sảnh](docs/lobby.png) | ![Hầm đỗ xe](docs/parking.png) |
 
 Ảnh chụp ở chế độ diễn thử, nội dung công việc trong ảnh là ví dụ minh họa.
 
@@ -48,12 +52,24 @@ Các tầng xếp theo logic của một trụ sở thật, từ khu công cộn
 
 Hạ tầng chung của tòa nhà:
 
-- **Thang máy kính** ở góc trước bên trái, cabin chạy thật giữa các tầng; mỗi lần việc được giao từ tầng này sang tầng khác, thang chạy đúng chặng đó.
+- **Thang máy kính** trước mặt tiền bên trái, chạy từ hầm B1 lên tầng cao nhất. Thang phục vụ theo lượt gọi: tới tầng có người chờ, chở tối đa 4 người, trả ở tầng gần nhất trước.
 - **Thang bộ thoát hiểm** bằng thép ở hông phải, chạy suốt chiều cao tòa nhà.
 - **Phòng cháy chữa cháy** ở mọi tầng: tủ vòi và bình chữa cháy cạnh thang máy, chuông báo, đường ống sprinkler dưới trần, biển EXIT; ngoài sân có trụ nước và biển điểm tập kết.
 - **An ninh:** bảo vệ ở sảnh và ở chốt hầm xe, camera ở sảnh và hầm, cổng kiểm soát trước thang máy.
 - **Khuôn viên:** quảng trường, cầu dẫn trải thảm vào sảnh, cột cờ, cây, đường phố có xe chạy qua.
 - Mỗi tầng có biển WC cạnh lõi thang.
+
+### Nhân viên dùng tòa nhà như thế nào
+
+| Tình huống | Nhân viên làm gì |
+| --- | --- |
+| Được người ở tầng khác giao việc (ví dụ CEO giao cho trưởng phòng) | Đi bộ ra sảnh thang, chờ thang, lên tầng người giao, đứng trước bàn họ nhận việc, rồi về bàn mình làm |
+| Trưởng phòng chia việc cho người trong phòng | Cả hai lên phòng họp lớn ở trung tâm hội nghị: trưởng phòng đứng trình bày, nhân viên ngồi nghe, họp xong về bàn làm |
+| Được giao việc cùng tầng trong các trường hợp còn lại | Tờ giấy giao việc bay từ người giao sang bàn người nhận |
+| Đang rảnh | Đứng ở góc tiếp khách của tầng; thỉnh thoảng xuống canteen đứng quầy hoặc ngồi góc cà phê một lúc rồi quay lên |
+| Đang ở canteen thì có việc | Bỏ dở giờ nghỉ, đi thang máy về bàn |
+
+Nhân viên đi theo hành lang và sảnh thang của từng tầng nên không xuyên qua bàn ghế hay phòng kính. Việc đi lại chỉ là phần trình diễn: bong bóng, bảng công việc và nhật ký vẫn phản ánh ngay trạng thái thật của subagent, kể cả khi nhân vật còn đang trên đường về bàn.
 
 Lễ tân, bảo vệ và bếp là người của tòa nhà, không phải subagent: họ đứng trực và không nhận việc. Thứ tự tầng nằm trong `office/roster.json`; nội thất từng tầng nằm trong các hàm `furnish_*` của `dashboard/view3d.js`.
 
@@ -108,8 +124,8 @@ Khi chưa có việc thật trong 10 phút gần nhất, văn phòng tự diễn
 | Trong tòa nhà | Claude Code đang |
 | --- | --- |
 | CEO ngồi bàn ở tầng trên cùng, bong bóng ghi việc đang làm | Nhận yêu cầu, đọc, viết, chạy lệnh |
-| Tờ giấy bay vòng ra mặt tiền, từ tầng người giao tới bàn người nhận | Gọi một subagent |
-| Nhân viên rời góc tiếp khách đi về bàn, ngồi gõ phím, màn hình sáng màu phòng ban | Subagent đang chạy |
+| Người nhận đi thang máy tới nhận việc hoặc vào phòng họp; cùng tầng thì tờ giấy bay sang bàn | Gọi một subagent |
+| Nhân viên về bàn, ngồi gõ phím, màn hình sáng màu phòng ban | Subagent đang chạy |
 | Giơ tay, dấu chấm than đỏ trên đầu, bong bóng "Chờ sếp duyệt quyền" | Chờ bạn cấp quyền cho một công cụ |
 | Gật đầu hoặc nhảy mừng, kèm pháo giấy | Subagent xong việc, hoặc CEO xong một lượt |
 | Biển "Đang tuyển" trên bàn | Vị trí đang để trống |
@@ -209,7 +225,9 @@ Repo dùng 9 trong 13 nhân vật đời thường của bộ gốc (thêm `male
 - Dấu chờ duyệt quyền chỉ tắt khi nhân viên đó có hoạt động kế tiếp, nên có thể còn hiện một lúc sau khi bạn đã duyệt.
 - Phiên bị tắt đột ngột: nhân viên của phiên đó ở lại bàn tối đa 30 phút rồi mới về góc tiếp khách.
 - Nhân vật theo phong cách khối vuông đơn giản; có 8 dáng nhân viên.
-- Nhân viên đứng chờ ở góc tiếp khách của tầng mình; thang máy chạy theo việc được giao nhưng chưa chở người, và chưa ai dùng canteen hay phòng họp.
+- Nhân vật có thể tới bàn trễ hơn trạng thái thật vài chục giây vì phải đi thang máy và họp; việc ngắn có thể xong trước khi nhân vật kịp ngồi vào bàn.
+- Chỉ có một thang máy và thang bộ chưa được dùng; lúc nhiều người được giao việc cùng lúc sẽ có hàng chờ thang.
+- Chỉ phòng họp lớn và canteen được dùng; phòng họp vừa, phòng nhỏ, khu đào tạo và hầm xe chưa có người sử dụng.
 - Bản 2D dự phòng chỉ vẽ các tầng dạng dải, không có hầm xe và nội thất riêng từng tầng.
 - Nhãn tên không bị che bởi sàn hay tường nên đôi khi hiện xuyên qua vật cản.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.
