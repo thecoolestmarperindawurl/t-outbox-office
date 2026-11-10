@@ -33,6 +33,10 @@ const TYPES = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
+  '.glb': 'model/gltf-binary',
+  '.gltf': 'model/gltf+json',
+  '.bin': 'application/octet-stream',
+  '.png': 'image/png',
 };
 
 function readJson(file) {

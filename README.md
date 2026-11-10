@@ -1,8 +1,10 @@
 # T-outbox
 
-Biến Claude Code thành một công ty. Bạn là sếp, Claude là CEO, các subagent là trưởng phòng và nhân viên. Một văn phòng 3D chạy trên máy bạn cho thấy ai đang ngồi bàn làm việc gì theo thời gian thực, và mọi người mặc đồng phục theo brand bạn nạp vào.
+Biến Claude Code thành một công ty. Bạn là sếp, Claude là CEO, các subagent là trưởng phòng và nhân viên. Một văn phòng 3D chạy trên máy bạn cho thấy đội robot AI đi lại, ngồi bàn, giao việc cho nhau theo thời gian thực, và tất cả mặc đồng phục theo brand bạn nạp vào.
 
 ![Văn phòng T-outbox](docs/screenshot.png)
+
+![Cận cảnh phòng Marketing](docs/closeup.png)
 
 Ảnh trên là chế độ diễn thử, nội dung công việc trong ảnh là ví dụ minh họa.
 
@@ -74,24 +76,25 @@ Khi chưa có việc thật trong 10 phút gần nhất, văn phòng tự diễn
 | --- | --- |
 | CEO ngồi bàn, bong bóng ghi việc đang làm | Nhận yêu cầu, đọc, viết, chạy lệnh |
 | Tờ giấy bay từ người giao tới bàn người nhận | Gọi một subagent |
-| Nhân viên rời pantry về bàn, gõ phím, màn hình sáng màu phòng ban | Subagent đang chạy |
-| Dấu chấm than đỏ trên đầu, bong bóng "Chờ sếp duyệt quyền" | Chờ bạn cấp quyền cho một công cụ |
-| Nhảy mừng và pháo giấy | Subagent xong việc, hoặc CEO xong một lượt |
+| Robot rời pantry đi về bàn, ngồi gõ phím, màn hình sáng màu phòng ban | Subagent đang chạy |
+| Robot vẫy tay, mặt ngạc nhiên, dấu chấm than đỏ trên đầu | Chờ bạn cấp quyền cho một công cụ |
+| Giơ ngón cái hoặc nhảy múa, kèm pháo giấy | Subagent xong việc, hoặc CEO xong một lượt |
 | Biển "Đang tuyển" trên bàn | Vị trí đang để trống |
 
 Các nút phía trên văn phòng:
 
 - **Tùy biến:** đổi tên công ty, khẩu hiệu, logo chữ, ba màu brand, kiểu đồng phục, tên từng nhân viên, đánh dấu vị trí đang tuyển. Lưu xong văn phòng đổi ngay.
 - **Sôi nổi** (mặc định bật): việc CEO tự làm cũng được một nhân viên đúng chuyên môn hỗ trợ, để cả văn phòng chuyển động. Tìm trên web thì Research hỗ trợ, viết file `.md` thì Content, viết mã thì Web, file số liệu thì Data. Tắt đi thì chỉ CEO và subagent thật chuyển động.
+- **Theo việc** (mặc định bật): máy quay tự lướt tới gần người vừa nhận việc, xong lượt thì lùi về toàn cảnh. Kéo chuột là máy quay trả quyền điều khiển cho bạn.
 - **Ẩn chi tiết:** ẩn tên file, câu tìm kiếm và nội dung việc trong bong bóng, bảng việc và nhật ký, dùng khi quay màn hình.
 - **Buổi tối:** đổi ánh sáng ngày và tối.
-- **Góc nhìn mặc định, Xem 2D:** kéo chuột để xoay, lăn chuột để phóng; phóng gần sẽ hiện tên người đang đứng ở pantry.
+- **Góc nhìn mặc định, Xem 2D:** kéo chuột để xoay, lăn chuột để phóng; phóng gần sẽ hiện tên người đang đứng ở pantry. Bấm tên một phòng trong danh sách **Phòng ban** để lướt tới phòng đó.
 
 Bên dưới là **bảng công việc** ba cột (chờ nhận, đang làm, đã xong). Mỗi thẻ ghi người làm, phòng ban, người giao, đồng hồ chạy và việc đang làm lúc này; bấm vào thẻ để xem từng bước. Khi nhiều phiên Claude Code cùng làm trong một dự án, mỗi phiên có một màu riêng trên thẻ và trên tờ giấy giao việc.
 
 ## Đồng phục theo brand
 
-Nhân viên mặc áo màu chính của brand, đeo dây thẻ màu nhấn, thẻ nhân viên mang vạch màu phòng ban. Trưởng phòng và CEO mặc áo khoác màu phụ, sơ mi trắng, cà vạt màu nhấn. Tường văn phòng có biển tên công ty và viền màu brand.
+Thân robot sơn màu chính của brand, đeo dây thẻ màu nhấn, thẻ nhân viên mang vạch màu phòng ban. Trưởng phòng và CEO sơn màu phụ (như áo khoác), có cổ áo trắng và cà vạt màu nhấn. Tường văn phòng có biển tên công ty và viền màu brand; thảm pantry pha màu brand.
 
 Cách nạp brand:
 
@@ -109,7 +112,7 @@ Cách nạp brand:
 }
 ```
 
-`uniform.style` nhận `polo`, `shirt` hoặc `tshirt`. Màu mặc định của T-outbox là màu tạm do repo đặt, bạn nên thay bằng brand của mình.
+`uniform.style` (`polo`, `shirt`, `tshirt`) hiện chỉ áp dụng cho bản 2D và để dành cho nhân vật người. Màu mặc định của T-outbox là màu tạm do repo đặt, bạn nên thay bằng brand của mình.
 
 ## Tùy biến nhân sự
 
@@ -142,7 +145,18 @@ Claude Code ── hooks ──> scripts/record-event.js ──> <dự án>/.t-o
 
 Hook lắng nghe `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `SubagentStart`, `SubagentStop`, `Stop`, `SessionEnd` và ghi mỗi sự kiện thành một dòng JSON. Server đẩy phần mới của file sang trình duyệt; trạng thái văn phòng được dựng lại từ file này nên tải lại trang không mất gì.
 
-Văn phòng 3D dựng bằng [three.js](https://threejs.org) (giấy phép MIT, đã kèm trong `dashboard/vendor/` để chạy offline). Phòng, bàn ghế và nhân vật đều tạo từ hình khối trong mã nguồn, không dùng mô hình 3D của bên thứ ba.
+Văn phòng 3D dựng bằng [three.js](https://threejs.org) (giấy phép MIT, đã kèm trong `dashboard/vendor/` để chạy offline).
+
+### Mô hình 3D và ghi công
+
+| Mô hình | Tác giả | Giấy phép | Vị trí |
+| --- | --- | --- | --- |
+| RobotExpressive (robot có 14 hoạt ảnh và 3 biểu cảm) | Tomás Laulhé, chỉnh sửa bởi Don McCurdy; lấy từ kho ví dụ của three.js | CC0 1.0 | `dashboard/assets/robot.glb` |
+| KayKit Furniture Bits 1.0 (bàn, ghế, sofa, thảm, đèn, tủ, cây) | Kay Lousberg | CC0 1.0 | `dashboard/assets/furniture/` |
+
+Tường, sàn, màn hình, biển hiệu và phụ kiện đồng phục dựng bằng hình khối trong mã nguồn.
+
+Nhân viên hiện là robot vì đây là bộ nhân vật có khung xương, hoạt ảnh và giấy phép CC0 đã xác minh được. Muốn đổi sang nhân vật người, cần một bộ mô hình `.glb` có hoạt ảnh đi, ngồi, đứng yên (ví dụ Kenney Mini Characters, CC0) rồi sửa phần nạp mô hình trong `dashboard/view3d.js`.
 
 ## Dữ liệu và quyền riêng tư
 
@@ -157,9 +171,10 @@ Văn phòng 3D dựng bằng [three.js](https://threejs.org) (giấy phép MIT, 
 - Trưởng phòng chỉ giao tiếp được cho nhân viên khi Claude Code cho phép subagent gọi subagent. Nếu môi trường đặt `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`, trưởng phòng sẽ tự làm phần việc đó và ghi rõ trong báo cáo.
 - Dấu chờ duyệt quyền chỉ tắt khi nhân viên đó có hoạt động kế tiếp, nên có thể còn hiện một lúc sau khi bạn đã duyệt.
 - Phiên bị tắt đột ngột: nhân viên của phiên đó ở lại bàn tối đa 30 phút rồi mới về pantry.
+- Nhân vật là robot, chưa có nhân vật người.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.
 - Design chỉ dựng được bản thiết kế thật khi phiên làm việc có công cụ thiết kế kết nối (ví dụ Canva qua MCP); nếu không, kết quả là brief hoặc file SVG/HTML.
 
 ## Giấy phép
 
-MIT. Xem [LICENSE](LICENSE). three.js giữ giấy phép riêng tại `dashboard/vendor/LICENSE-three.txt`.
+Mã nguồn: MIT, xem [LICENSE](LICENSE). three.js giữ giấy phép riêng tại `dashboard/vendor/LICENSE-three.txt`. Mô hình 3D: CC0, xem bảng ghi công ở trên và `dashboard/assets/furniture/LICENSE.txt`.

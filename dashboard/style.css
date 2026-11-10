@@ -234,6 +234,8 @@ body {
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
 
 .depts { list-style: none; margin: 0; padding: 8px 12px 10px; }
+.depts li { cursor: pointer; border-radius: 6px; }
+.depts li:hover { background: color-mix(in srgb, var(--c) 9%, transparent); }
 .depts li { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
 .depts li::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
 .dept-name { flex: 1; min-width: 0; }

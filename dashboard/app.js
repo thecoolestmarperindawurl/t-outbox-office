@@ -13,6 +13,8 @@ const GUEST_COLORS = ['#6b7a90', '#9a6b4f', '#4f8a6b', '#8a4f7d', '#4f6b9a', '#9
 const FEED_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit', 'WebSearch', 'WebFetch', 'Skill']);
 const ASSIST_MS = 6000;               // chế độ sôi nổi: nhân viên hỗ trợ CEO hiện ở bàn bao lâu
 const DONE_COLUMN_MAX = 12;
+const FOLLOW_GAP_MS = 4500;           // máy quay "theo việc" không đổi cảnh nhanh hơn mức này
+const FOLLOW_BACK_MS = 3000;
 const SESSION_COLORS = ['#3273c4', '#e4572e', '#3f9a5a', '#7c5cbf', '#c8497a', '#b8860b'];
 const FEED_GENERIC = { boss: 'giao việc mới', assign: 'giao việc cho nhân viên', tool: 'đang làm việc', done: 'hoàn thành một việc', wait: 'chờ sếp duyệt' };
 
@@ -31,6 +33,7 @@ const S = {
   lastRealAt: 0,
   hide: false,
   lively: true,
+  follow: true,
   sessions: new Map(),  // sid -> màu, để phân biệt nhiều phiên Claude Code cùng lúc
   openTasks: new Set(),
   taskSeq: 0,
@@ -40,6 +43,16 @@ const S = {
 let view = null;
 let demoTimer = null;
 let demoScript = null;
+let followAt = 0;
+let followTimer = null;
+
+// Máy quay "theo việc": lướt tới người vừa nhận việc, xong lượt thì lùi về toàn cảnh.
+function follow(action) {
+  if (!S.follow || !S.animate || !view || !view.focusStaff) return;
+  clearTimeout(followTimer);
+  const wait = Math.max(0, followAt + FOLLOW_GAP_MS - Date.now());
+  followTimer = setTimeout(() => { followAt = Date.now(); action(); }, wait);
+}
 
 // ---- Tiện ích ------------------------------------------------------------------
 function esc(s) {
@@ -220,6 +233,7 @@ function apply(ev) {
       else S.tasks.unshift({ id: ++S.taskSeq, sid: ev.sid, staff: actor.id, desc, by: manager.name, status: 'working', agent_id: ev.agent_id, t0: t, steps: [] });
       actor.assist = false;
       actor.instances.set(ev.agent_id, { desc, t });
+      follow(() => view.focusStaff(actor.id));
       setWorking(actor, desc, t);
       break;
     }
@@ -263,6 +277,9 @@ function apply(ev) {
       setDone(manager, t);
       addFeed(t, manager.name, 'đã báo cáo sếp', 'done');
       if (S.animate) view.celebrate(manager);
+      if (![...S.staff.values()].some((s) => s.instances.size)) {
+        follow(() => { view.focusStaff('manager'); followTimer = setTimeout(() => view.overview(), FOLLOW_BACK_MS); });
+      }
       break;
 
     case 'session_end':
@@ -328,7 +345,7 @@ function render() {
   $('depts').innerHTML = (S.roster.departments || []).map((d) => {
     const team = staff.filter((s) => s.dept === d.id && !s.off);
     const busy = team.filter((s) => s.status === 'working').length;
-    return `<li style="--c:${esc(d.color)}"><span class="dept-name">${esc(d.name)}</span>
+    return `<li style="--c:${esc(d.color)}" data-dept="${esc(d.id)}" title="Bấm để xem phòng này"><span class="dept-name">${esc(d.name)}</span>
       <span class="dept-dots">${team.map((s) => `<i class="${s.status}" title="${esc(s.name)}"></i>`).join('')}</span>
       <span class="dept-count">${busy}/${team.length}</span></li>`;
   }).join('');
@@ -416,7 +433,7 @@ async function useView(kind) {
   if (kind === '3d') {
     try {
       const { View3D } = await import('./view3d.js');
-      view = new View3D(stage, S.roster);
+      view = await View3D.create(stage, S.roster);
     } catch (err) {
       console.warn('Không dựng được văn phòng 3D, chuyển sang 2D:', err);
       stage.innerHTML = '';
@@ -425,9 +442,11 @@ async function useView(kind) {
   }
   if (!view) view = new View2D(stage, S.roster);
   stage.dataset.view = kind;
+  window.tOutboxView = view; // tiện kiểm thử và gỡ lỗi từ console
   $('btn-view').textContent = kind === '3d' ? 'Xem 2D' : 'Xem 3D';
   $('btn-camera').hidden = kind !== '3d';
   $('btn-night').hidden = kind !== '3d';
+  $('btn-follow').hidden = kind !== '3d';
   if (view.setNight) view.setNight(pref('night', '0') === '1');
   savePref('view', kind);
   for (const s of S.staff.values()) view.addStaff(s);
@@ -501,7 +520,7 @@ async function start() {
   render();
 
   $('btn-view').onclick = async () => { await useView($('stage').dataset.view === '3d' ? '2d' : '3d'); render(); };
-  $('btn-camera').onclick = () => view.resetCamera && view.resetCamera();
+  $('btn-camera').onclick = () => { clearTimeout(followTimer); if (view.overview) view.overview(); };
   $('btn-hide').onclick = () => {
     S.hide = !S.hide;
     savePref('hide', S.hide ? '1' : '0');
@@ -514,6 +533,19 @@ async function start() {
     savePref('lively', S.lively ? '1' : '0');
     $('btn-lively').setAttribute('aria-pressed', String(S.lively));
   };
+  S.follow = pref('follow', '1') === '1';
+  $('btn-follow').setAttribute('aria-pressed', String(S.follow));
+  $('btn-follow').onclick = () => {
+    S.follow = !S.follow;
+    savePref('follow', S.follow ? '1' : '0');
+    $('btn-follow').setAttribute('aria-pressed', String(S.follow));
+    if (!S.follow) { clearTimeout(followTimer); if (view.overview) view.overview(); }
+  };
+  // Bấm tên phòng ban để lướt máy quay tới phòng đó.
+  $('depts').addEventListener('click', (e) => {
+    const li = e.target.closest('[data-dept]');
+    if (li && view.focusRoom) { clearTimeout(followTimer); view.focusRoom(li.dataset.dept); }
+  });
   $('btn-night').onclick = () => {
     const on = pref('night', '0') !== '1';
     savePref('night', on ? '1' : '0');
