@@ -16,7 +16,9 @@ const WALK_SPEED = 2.3;       // đơn vị mỗi giây
 const LIFT_SPEED = 5;         // tốc độ cabin thang máy
 const LIFT_SEATS = 4;         // số người tối đa trong cabin
 const LIFT_X = [0.9, 2.5];    // hai trục thang máy cạnh nhau trước mặt tiền
-const CAR_SPEED = 4.2;        // tốc độ xe trong hầm và trên ram
+const CAR_SPEED = 4.2;        // tốc độ xe trên đường
+const STAIR_SPEED = 1.5;      // tốc độ đi trên thang bộ
+const CAR_GAP = 3.8;          // khoảng cách tối thiểu giữa hai xe cùng làn (tính từ tâm xe)
 const FADE = 0.22;
 const PERSON_H = 0.67 * PS;
 const CONFETTI = ['#e4572e', '#f2b134', '#3f9a5a', '#3273c4', '#c8497a', '#7c5cbf'];
@@ -100,6 +102,8 @@ export class View3D {
     this.npcs = [];
     this.traffic = [];
     this.parked = [];   // xe trong hầm, nhân viên mượn để ra ngoài
+    this.rooms = [];    // phòng họp có thể đặt
+    this.pending = [];  // các lần giao việc đang chờ gom thành cuộc họp
     this.drives = [];   // các chuyến xe đang chạy
     this.center = new THREE.Vector3(this.FW / 2, (this.H - this.FH) / 2 + 0.6, this.FD / 2 + 1.5);
     this.userMoved = false;
@@ -339,16 +343,20 @@ export class View3D {
     this.barrier.position.set(rx0 + 0.15, yB + 0.95, zCourt - 0.5);
     this.scene.add(this.barrier);
     for (let i = 0; i < 6; i++) this.box(0.6, 0.09, 0.09, i % 2 ? '#ffffff' : '#e0352b', 0.35 + i * 0.6, 0, 0, this.barrier, { noShadow: true });
-    this.gate = { x: (rx0 + rx1) / 2, zCourt, zStreet, laneZ: zStreet + 1.1 };
+    this.gate = { x: (rx0 + rx1) / 2, zCourt, zStreet, nearZ: zStreet + 1.1, farZ: zStreet + 3.1, mid: FW / 2, span: FW / 2 + 16, barrierZ: zCourt - 0.5 };
+    // Vạch dừng ở đầu ram: xe ra phải dừng nhường đường trước khi rẽ vào làn.
+    this.box(rx1 - rx0 - 0.3, 0.012, 0.16, '#f3f0e6', (rx0 + rx1) / 2, 0.002, zStreet - 0.12, this.scene, { noShadow: true });
     // Đường phố trước trụ sở.
     this.box(FW + 22, 0.1, 4.2, '#4e5157', FW / 2, -0.07, zStreet + 2.1);
     for (let x = -10; x < FW + 11; x += 2.4) this.box(1.2, 0.012, 0.1, '#f3f0e6', x, -0.014, zStreet + 2.1, this.scene, { noShadow: true });
     this.box(FW + 22, 0.24, 1.6, '#d9d2c4', FW / 2, -0.14, zStreet + 5.0);
     // Xe chạy trên đường và một taxi chờ khách trước cầu dẫn.
-    const lanes = [[zStreet + 1.1, 1, 'sedan', -6], [zStreet + 1.1, 1, 'van', 12], [zStreet + 3.1, -1, 'suv', 4], [zStreet + 3.1, -1, 'hatchback-sports', 22]];
-    for (const [z, dir, model, x] of lanes) {
-      const car = this.prop(model, x, -0.02, z, { length: 3.4, ry: dir * Math.PI / 2 });
-      this.traffic.push({ car, dir, speed: 3.2 + Math.random() * 1.6 });
+    // Xe chạy bên phải đường: làn sát trụ sở đi về phía -x, làn bên kia đi về phía +x.
+    const fleet = [['near', 'sedan', 6], ['near', 'van', 20], ['far', 'suv', -4], ['far', 'hatchback-sports', 12]];
+    for (const [lane, model, x] of fleet) {
+      const dir = lane === 'near' ? -1 : 1;
+      const car = this.prop(model, x, -0.02, this.laneZ(lane), { length: 3.4, ry: dir * Math.PI / 2 });
+      this.traffic.push({ car, lane, dir, v: 0, vmax: 3.2 + Math.random() * 1.6 });
     }
     // Cây, cột cờ.
     for (const x of [-4.5, -2.2, FW + 2.2, FW + 4.5]) for (const z of [FD + 2.5, FD + 8]) this.tree(x, z, 1 + hash(x + ':' + z, 4) * 0.12);
@@ -385,7 +393,7 @@ export class View3D {
     for (let i = 0; i <= cars.length; i++) this.box(0.07, 0.012, 3.6, '#f3f0e6', 0.9 + i * step, y + 0.025, 2.1, this.scene, { noShadow: true });
     cars.forEach((model, i) => {
       const x = 0.9 + (i + 0.5) * step;
-      if (model) this.parked.push({ car: this.prop(model, x, y + 0.02, 2.0, { length: 3.3 }), x, busy: false });
+      if (model) { const car = this.prop(model, x, y + 0.02, 2.0, { length: 3.3 }); this.parked.push({ car, x, bay: car.position.clone(), busy: false }); }
       this.box(1.2, 0.012, 0.07, '#f3f0e6', x, y + 0.025, 3.9, this.scene, { noShadow: true });
     });
     const ceo = this.text('CEO', { w: 1.2, h: 0.4, color: '#f2c14e' });
@@ -644,6 +652,11 @@ export class View3D {
     wc.position.set(0.03, y + 1.55, 4.7);
     this.scene.add(wc);
     this.fireKit(y, wallH);
+    // Cửa ra thang bộ thoát hiểm trên vách phải, ngay chiếu nghỉ của tầng.
+    const sz = this.stairDoor(i).z;
+    for (const dz of [-0.48, 0.48]) this.box(0.1, 2.1, 0.08, '#59636b', FW + 0.03, y + 1.05, sz + dz);
+    this.box(0.1, 0.1, 1.04, '#59636b', FW + 0.03, y + 2.1, sz);
+    this.box(0.04, 0.2, 0.5, null, FW + 0.06, y + 2.3, sz, this.scene, { material: new THREE.MeshBasicMaterial({ color: '#1fa35b', toneMapped: false }), noShadow: true });
     const lamp = new THREE.PointLight('#ffd9a8', 0, 16, 1.2);
     lamp.position.set(FW / 2, y + wallH - 0.3, FD / 2 + 0.5);
     this.scene.add(lamp);
@@ -693,6 +706,13 @@ export class View3D {
       this.glassRoom(0.8, 4.0, 5.7, 6.7, y);
       this.meetingTable(3.3, y, 5.35, 3.2, 6, color);
       this.presentation(0.1, y, 5.35, Math.PI / 2, 'dash', 'BÁO CÁO QUÝ', color, 3.3);
+      const strip = FD - 0.2, front = [2.23, 3.3, 4.37];
+      this.rooms.push({
+        id: 'board', kind: 'board', floor: i, busy: false,
+        presenter: { x: 1.25, z: 5.35, heading: Math.PI / 2, via: [{ x: 1.25, z: strip }] },
+        seats: front.map((x) => ({ x, z: 6.3, heading: Math.PI, via: [{ x, z: strip }] }))
+          .concat(front.slice().reverse().map((x) => ({ x, z: 4.4, heading: 0, via: [{ x: 5.3, z: strip }, { x: 5.3, z: 4.4 }] }))),
+      });
     } else if (f.kind === 'canteen') {
       this.furnishCanteen(y);
     } else if (f.kind === 'meeting') {
@@ -722,10 +742,19 @@ export class View3D {
     this.prop('laptop', cx - 0.5, y + this.topOf('table'), cz, { ry: Math.PI / 2, scale: KS * 0.8 });
   }
 
-  // Phòng vách kính: kính ba mặt, mở về phía mặt tiền để nhìn vào.
-  glassRoom(x0, z0, x1, z1, y, h = 2.25) {
+  // Phòng vách kính: kính ba mặt, mở về phía mặt tiền để nhìn vào. door = { x, w }: chừa cửa trên vách sau.
+  glassRoom(x0, z0, x1, z1, y, h = 2.25, door) {
     const steel = '#8f9aa3', w = x1 - x0, d = z1 - z0;
-    if (z0 > 0.4) this.box(w, h, 0.04, null, (x0 + x1) / 2, y + h / 2, z0, this.scene, { material: this.glass, transparent: true });
+    const pane = (a, b, y0, hh) => this.box(b - a, hh, 0.04, null, (a + b) / 2, y + y0 + hh / 2, z0, this.scene, { material: this.glass, transparent: true });
+    if (z0 > 0.4) {
+      if (door) {
+        const a = door.x - door.w / 2, b = door.x + door.w / 2;
+        if (a > x0) pane(x0, a, 0, h);
+        if (x1 > b) pane(b, x1, 0, h);
+        pane(a, b, 2.05, h - 2.05);
+        for (const x of [a, b]) this.box(0.06, h, 0.08, steel, x, y + h / 2, z0);
+      } else pane(x0, x1, 0, h);
+    }
     for (const x of [x0, x1]) {
       this.box(0.04, h, d, null, x, y + h / 2, (z0 + z1) / 2, this.scene, { material: this.glass, transparent: true });
       for (const z of [z0, z1]) this.box(0.08, h, 0.08, steel, x, y + h / 2, z);
@@ -945,31 +974,56 @@ export class View3D {
   }
 
   // Tầng hội nghị: sảnh chờ, phòng họp lớn và vừa có máy chiếu, hai phòng họp nhỏ, khu đào tạo.
+  // Mỗi phòng đăng ký chỗ ngồi kèm lối vào (via) để người đi vào không xuyên qua bàn ghế, vách kính.
   furnishMeeting(y) {
     const { FW, brand } = this;
     const c1 = brand.primary, c2 = brand.accent;
+    const floor = Math.round(y / this.FH), zc = this.corridor(floor).zc;
     // Sảnh chờ cạnh thang máy, có bảng lịch phòng.
     this.prop('loungeSofa', 2.2, y, 0.8, { tint: { carpet: mix('#ffffff', c1, 0.75) } });
     this.prop('tableCoffee', 2.2, y, 1.9);
     this.prop('pottedPlant', 3.6, y, 0.7);
     this.standBoard(2.2, y, 6.2, 1.7, this.slide('menu', 'LỊCH PHÒNG HỌP', c1));
-    // Phòng họp lớn 10 chỗ.
+    // Phòng họp lớn 10 chỗ: hàng trước vào thẳng từ hành lang, hàng sau đi vòng đầu bàn.
     this.glassRoom(4.4, 0.2, 10.4, 3.6, y);
     this.meetingTable(7.6, y, 1.9, 4.4, 10, c1);
     this.presentation(4.5, y, 1.9, Math.PI / 2, 'bars', 'HỌP GIAO BAN', c1, 1.4);
+    const bigX = [0, 1, 2, 3, 4].map((i) => 5.84 + 0.88 * i);
+    this.rooms.push({
+      id: 'big', kind: 'meeting', floor, busy: false,
+      presenter: { x: 4.95, z: 1.9, heading: Math.PI / 2 },
+      seats: bigX.map((x) => ({ x, z: 2.85, heading: Math.PI }))
+        .concat(bigX.slice().reverse().map((x) => ({ x, z: 0.95, heading: 0, via: [{ x: 10.05, z: zc }, { x: 10.05, z: 0.35 }, { x, z: 0.35 }] }))),
+    });
     // Phòng họp vừa 6 chỗ.
     this.glassRoom(10.9, 0.2, FW - 0.35, 3.6, y);
     this.meetingTable(13.0, y, 1.9, 3.0, 6, c2);
     this.presentation(FW - 0.45, y, 1.9, -Math.PI / 2, 'dash', 'KẾ HOẠCH QUÝ', c2, 1.2);
-    // Hai phòng họp nhỏ 3 chỗ.
+    const medX = [12.0, 13.0, 14.0];
+    this.rooms.push({
+      id: 'medium', kind: 'meeting', floor, busy: false,
+      presenter: { x: 15.05, z: 1.9, heading: -Math.PI / 2 },
+      seats: medX.map((x) => ({ x, z: 2.85, heading: Math.PI }))
+        .concat(medX.map((x) => ({ x, z: 0.95, heading: 0, via: [{ x: 11.15, z: zc }, { x: 11.15, z: 0.35 }, { x, z: 0.35 }] }))),
+    });
+    // Hai phòng họp nhỏ cho họp một-một, cửa ở vách sau.
     for (const x0 of [4.4, 7.6]) {
-      this.glassRoom(x0, 4.7, x0 + 2.8, 6.7, y);
+      this.glassRoom(x0, 4.7, x0 + 2.8, 6.7, y, 2.25, { x: x0 + 0.55, w: 0.8 });
       this.prop('tableRound', x0 + 1.4, y, 5.75, { scale: KS * 0.9 });
       for (const [dx, dz] of [[-0.85, 0], [0.85, 0], [0, -0.85]]) this.chairAt('chairModernCushion', x0 + 1.4 + dx, y, 5.75 + dz, x0 + 1.4, 5.75, { carpetBlue: c2 });
+      const door = [{ x: x0 + 0.55, z: zc }, { x: x0 + 0.55, z: 5.2 }];
+      this.rooms.push({
+        id: 'small' + x0, kind: 'meeting', floor, busy: false,
+        seats: [{ x: x0 + 1.4, z: 4.9, heading: 0, via: door }, { x: x0 + 0.55, z: 5.75, heading: Math.PI / 2, via: door }],
+      });
     }
-    // Khu đào tạo: ghế xếp hàng nhìn lên màn chiếu.
+    // Khu đào tạo: ghế xếp hàng nhìn lên màn chiếu; người vào chỗ theo khe giữa hai hàng ghế.
     this.presentation(FW - 0.45, y, 5.6, -Math.PI / 2, 'kanban', 'ĐÀO TẠO NỘI BỘ', c1, 2.6);
-    for (const x of [11.4, 12.3, 13.2]) for (const z of [4.9, 5.6, 6.3]) this.chairAt('chairCushion', x, y, z, FW, z, { carpet: mix('#ffffff', c1, 0.6) });
+    this.trainSeats = [];
+    for (const x of [11.4, 12.3, 13.2]) for (const z of [4.9, 5.6, 6.3]) {
+      this.chairAt('chairCushion', x, y, z, FW, z, { carpet: mix('#ffffff', c1, 0.6) });
+      this.trainSeats.push({ floor, x, z, taken: false, via: [{ x: 10.85, z: zc }, { x: 10.85, z: z + 0.35 }, { x, z: z + 0.35 }] });
+    }
   }
 
   buildRoof() {
@@ -1206,6 +1260,29 @@ export class View3D {
     return { zc: AISLE_Z, xr: 5.2 };
   }
 
+  // Cửa ra thang bộ của tầng k (chiếu nghỉ đổi bên theo tầng chẵn lẻ, khớp với các vế thang).
+  stairDoor(k) {
+    return { x: this.FW - 0.15, z: k % 2 ? 0.95 : 5.85 };
+  }
+
+  // Các điểm 3D đi từ cửa thang tầng f0 tới cửa thang tầng f1: chiếu nghỉ, chân vế, đầu vế, chiếu nghỉ...
+  stairPath(f0, f1) {
+    const { FW, FH } = this, xs = FW + 1.02, xl = FW + 0.85;
+    const lz = (k) => (k % 2 ? 0.95 : 5.85);
+    const foot = (k) => (k % 2 ? 1.5 : 5.3);   // chân vế thang đi lên từ tầng k
+    const head = (k) => (k % 2 ? 5.3 : 1.5);   // đầu vế thang đó, ở tầng k + 1
+    const dir = Math.sign(f1 - f0);
+    const pts = [{ x: xl, y: f0 * FH, z: lz(f0) }];
+    for (let k = f0; k !== f1; k += dir) {
+      if (dir > 0) pts.push({ x: xs, y: k * FH, z: foot(k) }, { x: xs, y: (k + 1) * FH, z: head(k) });
+      else pts.push({ x: xs, y: k * FH, z: head(k - 1) }, { x: xs, y: (k - 1) * FH, z: foot(k - 1) });
+      pts.push({ x: xl, y: (k + dir) * FH, z: lz(k + dir) });
+    }
+    const door = this.stairDoor(f1);
+    pts.push({ x: door.x, y: f1 * FH, z: door.z });
+    return pts;
+  }
+
   pathOnFloor(i, A, B) {
     const { zc, xr } = this.corridor(i);
     const strip = this.FD - 0.2;
@@ -1220,31 +1297,51 @@ export class View3D {
 
   // Lập lại lộ trình: làm hết việc vặt (đi nhận việc, họp, nghỉ ở canteen) rồi về bàn hoặc về góc chờ.
   replan(a) {
-    if (a.s.fixed) return;
     let floor = a.floor, at = { x: a.x, z: a.z };
     const steps = [];
     const out = a.errands.find((e) => e.kind === 'out' && e.phase);
-    if (out) { // đang lái xe: chạy nốt chuyến (có việc thì quay về ngay) rồi mới theo lộ trình mới
+    if (a.steps[0] && a.steps[0].k === 'climb') { // đang trên thang bộ: đi hết vế thang rồi mới theo lộ trình mới
+      let j = 0;
+      while (a.steps[j] && a.steps[j].k === 'climb') steps.push(a.steps[j++]);
+      const last = steps[steps.length - 1];
+      floor = Math.round(last.y / this.FH); at = { x: last.x, z: last.z };
+    } else if (out) { // đang lái xe: chạy nốt chuyến (có việc thì quay về ngay) rồi mới theo lộ trình mới
       steps.push({ k: 'drive', errand: out });
       floor = -1; at = { x: out.slot.x, z: 4.3 };
     } else if (a.riding) { // đang trong cabin: đi nốt chặng này rồi mới theo lộ trình mới
       const ride = this.rideOf(a);
       steps.push({ k: 'lift', to: ride.to, called: true });
       floor = ride.to; at = this.liftSpot();
-    } else this.calls = this.calls.filter((c) => c.a !== a);
+    } else {
+      this.calls = this.calls.filter((c) => c.a !== a);
+      if (a.at && a.at.back && Math.abs(a.at.x - a.x) < 0.05 && Math.abs(a.at.z - a.z) < 0.05) at = a.at; // đang ngồi trong phòng: ra theo lối đã vào
+    }
     const go = (dest) => {
+      if (at.back) { for (const p of at.back) steps.push({ k: 'walk', x: p.x, z: p.z }); at = at.back[at.back.length - 1]; }
       if (dest.floor !== floor) {
-        for (const p of this.pathOnFloor(floor, at, this.liftSpot())) steps.push({ k: 'walk', ...p });
-        steps.push({ k: 'lift', to: dest.floor });
-        floor = dest.floor; at = this.liftSpot();
+        // Cách một tầng thì đi thang bộ; cách hai tầng mà thang máy đang đông cũng đi bộ; xa hơn hoặc xuống hầm thì đi thang máy.
+        const span = Math.abs(dest.floor - floor);
+        const stairs = floor >= 0 && dest.floor >= 0 && (span === 1 || (span === 2 && this.calls.length >= 3));
+        if (stairs) {
+          for (const p of this.pathOnFloor(floor, at, this.stairDoor(floor))) steps.push({ k: 'walk', ...p });
+          for (const p of this.stairPath(floor, dest.floor)) steps.push({ k: 'climb', ...p });
+          floor = dest.floor; at = this.stairDoor(floor);
+        } else {
+          for (const p of this.pathOnFloor(floor, at, this.liftSpot())) steps.push({ k: 'walk', ...p });
+          steps.push({ k: 'lift', to: dest.floor });
+          floor = dest.floor; at = this.liftSpot();
+        }
       }
-      for (const p of this.pathOnFloor(floor, at, dest)) steps.push({ k: 'walk', ...p });
-      at = { x: dest.x, z: dest.z };
+      const via = dest.via || [];
+      for (const p of this.pathOnFloor(floor, at, via[0] || dest)) steps.push({ k: 'walk', ...p });
+      for (const p of via.length ? via.slice(1).concat([dest]) : []) steps.push({ k: 'walk', x: p.x, z: p.z });
+      at = { x: dest.x, z: dest.z, back: via.length ? via.slice().reverse() : null };
+      return at;
     };
     for (const e of a.errands) {
       if (e === out) continue;
-      go(e.dest);
-      steps.push(e.kind === 'out' ? { k: 'drive', errand: e } : { k: 'dwell', t: e.dwell, heading: e.heading, sit: e.sit, errand: e });
+      const here = go(e.dest);
+      steps.push(e.kind === 'out' ? { k: 'drive', errand: e } : { k: 'dwell', t: e.dwell, heading: e.heading, sit: e.sit, errand: e, at: here });
     }
     if (a.wantDesk) { go({ floor: a.home.floor, ...a.seat }); steps.push({ k: 'sit' }); }
     else { go(a.home); steps.push({ k: 'idle' }); }
@@ -1260,69 +1357,160 @@ export class View3D {
     this.replan(a);
   }
 
-  // Tuyến xe từ ô đỗ ra đường: lối chạy trong hầm, sân trũng, qua barie, lên ram, rẽ ra làn gần.
-  carRoute(slot) {
-    const g = this.gate, y = -this.FH + 0.02;
+  // ---- Giao thông ------------------------------------------------------------------------
+  laneZ(lane) {
+    return lane === 'near' ? this.gate.nearZ : this.gate.farZ;
+  }
+
+  // Mọi xe đang chiếm một làn: xe trên đường và xe của nhân viên khi đã vào làn.
+  laneOccupants() {
+    const list = this.traffic.map((t) => ({ lane: t.lane, x: t.car.position.x, ref: t }));
+    for (const e of this.drives) {
+      const c = e.slot.car;
+      if (!c.visible || c.position.y < -0.3) continue;
+      for (const lane of ['near', 'far']) if (Math.abs(c.position.z - this.laneZ(lane)) < 0.7) list.push({ lane, x: c.position.x, ref: e });
+    }
+    return list;
+  }
+
+  // Khoảng cách tới xe gần nhất phía trước trên cùng làn.
+  gapAhead(occ, lane, x, dir, self) {
+    let gap = Infinity;
+    for (const o of occ) if (o.lane === lane && o.ref !== self && (o.x - x) * dir > 0.01) gap = Math.min(gap, (o.x - x) * dir);
+    return gap;
+  }
+
+  // Làn gần trống ở đoạn xe ra sắp rẽ vào (xe trên làn này chạy từ phía +x tới).
+  roadClear(self) {
+    const g = this.gate;
+    return !this.laneOccupants().some((o) => o.ref !== self && o.lane === 'near' && o.x > g.x - 3 && o.x < g.x + 12);
+  }
+
+  updateTraffic(dt) {
+    const g = this.gate, occ = this.laneOccupants();
+    for (const t of this.traffic) {
+      const gap = this.gapAhead(occ, t.lane, t.car.position.x, t.dir, t);
+      const want = Math.min(t.vmax, Math.max(0, (gap - CAR_GAP) * 1.3));   // giữ khoảng cách với xe trước
+      t.v += THREE.MathUtils.clamp(want - t.v, -10 * dt, 3 * dt);
+      t.car.position.x += t.dir * Math.max(0, t.v) * dt;
+      if ((t.car.position.x - g.mid) * t.dir > g.span) { // ra khỏi khung hình: vòng lại đầu đường khi đầu đường đang trống
+        const start = g.mid - t.dir * g.span;
+        if (this.gapAhead(occ, t.lane, start - t.dir * 4, t.dir, t) > 9) t.car.position.x = start;
+      }
+    }
+  }
+
+  // Tuyến ra: chạy thẳng khỏi ô (xe đỗ quay đầu ra), dừng trước barie, lên ram, dừng ở vạch nhường đường, rẽ phải vào làn gần.
+  routeOut(slot) {
+    const g = this.gate, yb = -this.FH + 0.02, V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const rampY = (z) => -this.FH + this.FH * (z - g.zCourt) / (g.zStreet - g.zCourt);
     return [
-      [slot.x, y, 2.0], [slot.x, y, 5.3], [g.x, y, 5.3], [g.x, y, g.zCourt], [g.x, -0.02, g.zStreet], [g.x + 0.6, -0.02, g.laneZ], [this.FW / 2 + this.FW / 2 + 16, -0.02, g.laneZ],
-    ].map(([x, yy, z]) => new THREE.Vector3(x, yy, z));
+      { p: V(slot.x, yb, 5.3), v: 1.8 },
+      { p: V(g.x, yb, 5.3), v: 2.6 },
+      { p: V(g.x, yb, g.barrierZ - 1.8), v: 2.2, hold: () => this.barrier.rotation.z < 1.1 },
+      { p: V(g.x, yb, g.zCourt), v: 2.4 },
+      { p: V(g.x, rampY(g.zStreet - 1.7), g.zStreet - 1.7), v: 2.8, hold: (e) => !this.roadClear(e) },
+      { p: V(g.x - 0.4, -0.02, g.zStreet + 0.5), v: 2.2 },
+      { p: V(g.x - 1.8, -0.02, g.nearZ), v: 2.8, lane: 'near' },
+      { p: V(g.mid - g.span - 4, -0.02, g.nearZ), v: CAR_SPEED, lane: 'near' },
+    ];
+  }
+
+  // Tuyến về: chạy theo làn gần, giảm tốc rẽ phải vào ram, dừng chờ barie, chạy qua ô của mình rồi lùi vào ô.
+  routeBack(slot) {
+    const g = this.gate, yb = -this.FH + 0.02, V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const rampY = (z) => -this.FH + this.FH * (z - g.zCourt) / (g.zStreet - g.zCourt);
+    const side = Math.sign(slot.x - g.x) || -1;
+    return [
+      { p: V(g.mid + g.span + 4, -0.02, g.nearZ), lane: 'near' },
+      { p: V(g.x + 1.9, -0.02, g.nearZ), v: CAR_SPEED, lane: 'near' },
+      { p: V(g.x + 0.5, -0.02, g.zStreet + 0.5), v: 1.8 },
+      { p: V(g.x, rampY(g.zStreet - 0.3), g.zStreet - 0.3), v: 2.0 },
+      { p: V(g.x, rampY(g.barrierZ + 1.8), g.barrierZ + 1.8), v: 2.4, hold: () => this.barrier.rotation.z < 1.1 },
+      { p: V(g.x, yb, g.zCourt), v: 2.0 },
+      { p: V(g.x, yb, g.barrierZ - 1.2), v: 2.0 },
+      { p: V(g.x, yb, 5.3), v: 2.6 },
+      { p: V(slot.x + side * 1.5, yb, 5.3), v: 2.0 },
+      { p: V(slot.x, yb, 3.8), v: 1.0, rev: true },
+      { p: V(slot.x, yb, 2.0), v: 0.9, rev: true },
+    ];
+  }
+
+  // Chạy xe theo tuyến: tôn trọng điểm dừng (barie, nhường đường) và giữ khoảng cách khi đã vào làn.
+  steerCar(e, dt) {
+    const car = e.slot.car, pos = car.position;
+    if (e.i >= e.path.length) return true;
+    const t = e.path[e.i];
+    let want = t.v || CAR_SPEED;
+    if (t.hold && t.hold(e)) want = Math.min(want, Math.max(0, pos.distanceTo(t.p) - 0.02) * 1.6);
+    if (t.lane) want = Math.min(want, Math.max(0, (this.gapAhead(this.laneOccupants(), t.lane, pos.x, -1, e) - CAR_GAP) * 1.3));
+    e.v += THREE.MathUtils.clamp(want - e.v, -10 * dt, 3.5 * dt);
+    const before = pos.clone();
+    let step = Math.max(0, e.v) * dt;
+    while (step > 1e-5 && e.i < e.path.length) {
+      const tt = e.path[e.i], d = pos.distanceTo(tt.p);
+      if (step < d) { pos.lerp(tt.p, step / d); step = 0; }
+      else { pos.copy(tt.p); step -= d; if (tt.hold && tt.hold(e)) { e.v = 0; break; } e.i++; }
+    }
+    const delta = pos.clone().sub(before);
+    if (delta.lengthSq() > 1e-8) { // mũi xe theo hướng chạy; đoạn lùi thì mũi xe ngược hướng chạy
+      if (e.path[Math.min(e.i, e.path.length - 1)].rev) delta.negate();
+      const yaw = Math.atan2(delta.x, delta.z), pitch = -Math.atan2(delta.y, Math.hypot(delta.x, delta.z));
+      car.rotation.order = 'YXZ';
+      let d = yaw - car.rotation.y;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      car.rotation.y += d * Math.min(1, dt * 7);
+      car.rotation.x += (pitch - car.rotation.x) * Math.min(1, dt * 7);
+    }
+    return e.i >= e.path.length;
   }
 
   // Một bước lái xe của nhân viên: ra khỏi hầm, vắng mặt một lúc, lái về và lùi vào ô đỗ.
   drive(a, e, dt) {
     const car = e.slot.car;
     if (!e.phase) { // lên xe
-      e.phase = 'out'; e.u = 0;
-      e.pts = this.carRoute(e.slot);
-      e.len = [0];
-      for (let i = 1; i < e.pts.length; i++) e.len.push(e.len[i - 1] + e.pts[i].distanceTo(e.pts[i - 1]));
+      e.phase = 'out'; e.path = this.routeOut(e.slot); e.i = 0; e.v = 0;
       a.body.g.visible = false;
       this.drives.push(e);
     }
-    const total = e.len[e.len.length - 1];
     if (a.wantDesk) e.recall = true; // có việc: quay xe về ngay
-    if (e.phase === 'out') {
-      e.u += CAR_SPEED * dt;
-      if (e.recall && e.u < e.len[2]) e.phase = 'back';      // chưa ra khỏi hầm thì quay lại luôn
-      else if (e.u >= total) { e.u = total; e.phase = 'away'; }
-    } else if (e.phase === 'away') {
+    if (e.phase === 'away') {
       e.away -= dt;
-      if (e.away <= 0 || e.recall) e.phase = 'back';
-    } else {
-      e.u -= CAR_SPEED * dt;
-      if (e.u <= 0) { // đã vào ô: xuống xe
-        e.u = 0;
-        car.position.copy(e.pts[0]); car.rotation.set(0, 0, 0);
-        this.drives = this.drives.filter((k) => k !== e);
-        a.body.g.visible = true;
-        a.floor = -1; a.x = e.slot.x; a.z = 4.3;
-        a.body.g.position.set(a.x, -this.FH, a.z);
-        e.phase = null;
-        if (e.release) e.release();
-        a.errands = a.errands.filter((k) => k !== e);
-        a.steps.shift();
-        return;
+      const g = this.gate;
+      const spawnClear = !this.laneOccupants().some((o) => o.lane === 'near' && o.x > g.mid + g.span - 6);
+      if ((e.away <= 0 || e.recall) && spawnClear) {
+        e.phase = 'back'; e.path = this.routeBack(e.slot); e.i = 1; e.v = CAR_SPEED;
+        car.position.copy(e.path[0].p); car.rotation.set(0, -Math.PI / 2, 0); car.visible = true;
       }
+      return;
     }
-    let i = 1;
-    while (i < e.pts.length - 1 && e.len[i] < e.u) i++;
-    const p0 = e.pts[i - 1], p1 = e.pts[i], t = (e.u - e.len[i - 1]) / (e.len[i] - e.len[i - 1] || 1);
-    car.position.lerpVectors(p0, p1, Math.min(1, Math.max(0, t)));
-    car.visible = e.phase !== 'away';
-    // Lúc ra thì mũi xe hướng theo đường đi; lúc về cũng vậy, riêng đoạn cuối lùi vào ô nên giữ mũi quay ra.
-    const forward = e.phase === 'out' ? p1.clone().sub(p0) : p0.clone().sub(p1);
-    if (e.phase === 'back' && i === 1) forward.negate();
-    const yaw = Math.atan2(forward.x, forward.z), pitch = -Math.atan2(forward.y, Math.hypot(forward.x, forward.z));
-    let d = yaw - car.rotation.y;
-    d = Math.atan2(Math.sin(d), Math.cos(d));
-    car.rotation.order = 'YXZ';
-    car.rotation.y += d * Math.min(1, dt * 6);
-    car.rotation.x += (pitch - car.rotation.x) * Math.min(1, dt * 6);
+    const finished = this.steerCar(e, dt);
     a.body.g.position.copy(car.position); // bong bóng việc (nếu có) đi theo xe
+    if (!finished) return;
+    if (e.phase === 'out') { e.phase = 'away'; car.visible = false; if (e.recall) e.away = 0; return; }
+    // Đã lùi vào ô: xuống xe.
+    car.position.copy(e.slot.bay); car.rotation.set(0, 0, 0);
+    this.drives = this.drives.filter((k) => k !== e);
+    a.body.g.visible = true;
+    a.floor = -1; a.x = e.slot.x; a.z = 4.3;
+    a.body.g.position.set(a.x, -this.FH, a.z);
+    e.phase = null;
+    if (e.release) e.release();
+    a.errands = a.errands.filter((k) => k !== e);
+    a.steps.shift();
   }
 
   dropErrands(a, kind) {
     a.errands = a.errands.filter((e) => { if (e.kind !== kind) return true; if (e.release) e.release(); return false; });
+  }
+
+  // Lúc rảnh, thỉnh thoảng lên khu đào tạo ngồi nghe một lúc.
+  sendToTraining(a) {
+    const seat = (this.trainSeats || []).find((k) => !k.taken);
+    if (!seat) return;
+    seat.taken = true;
+    a.errands.push({ kind: 'break', dest: { floor: seat.floor, x: seat.x, z: seat.z, via: seat.via }, dwell: 12 + Math.random() * 10, heading: Math.PI / 2, sit: true, release: () => { seat.taken = false; } });
+    this.replan(a);
   }
 
   // Lúc rảnh, thỉnh thoảng xuống canteen đứng quầy hoặc ngồi góc cà phê một lúc.
@@ -1345,15 +1533,15 @@ export class View3D {
     a.wantDesk = want;
     a.status = s.status;
     a.alert = s.alert;
-    if (!animate && !s.fixed) { // dựng lại từ lịch sử: đặt thẳng vào chỗ, không diễn cảnh đi lại
+    if (!animate) { // dựng lại từ lịch sử: đặt thẳng vào chỗ, không diễn cảnh đi lại
       this.leaveLifts(a);
       for (const e of a.errands) if (e.kind === 'out' && e.phase) { // đang lái xe: trả xe về ô ngay
-        e.slot.car.position.copy(e.pts[0]); e.slot.car.rotation.set(0, 0, 0); e.slot.car.visible = true;
+        e.slot.car.position.copy(e.slot.bay); e.slot.car.rotation.set(0, 0, 0); e.slot.car.visible = true;
         this.drives = this.drives.filter((k) => k !== e);
         a.body.g.visible = true;
       }
-      this.dropErrands(a, 'break'); this.dropErrands(a, 'brief'); this.dropErrands(a, 'out');
-      a.riding = false; a.floor = a.home.floor;
+      for (const kind of ['break', 'brief', 'out', 'meet']) this.dropErrands(a, kind);
+      a.riding = false; a.floor = a.home.floor; a.yAbs = null; a.at = null;
       const p = want ? a.seat : a.home;
       a.x = p.x; a.z = p.z;
       a.steps = [{ k: want ? 'sit' : 'idle' }];
@@ -1374,26 +1562,63 @@ export class View3D {
     a.body.alert.visible = s.alert;
   }
 
-  // ---- Hiệu ứng ------------------------------------------------------------------------
-  // Giao việc. Tùy quan hệ giữa hai người mà diễn khác nhau:
-  //  - trưởng phòng giao cho người trong phòng: cả hai lên trung tâm hội nghị họp nhanh;
-  //  - người giao ở tầng khác (ví dụ CEO): người nhận đi thang máy tới bàn người giao nhận việc;
+  // ---- Giao việc ------------------------------------------------------------------------
+  // Tùy quan hệ giữa hai người mà diễn khác nhau:
+  //  - trưởng phòng giao cho người trong phòng, hoặc CEO giao cho trưởng phòng: các lần giao liền nhau
+  //    được gom thành một cuộc họp, rồi chọn phòng vừa đủ chỗ;
+  //  - người giao ở tầng khác: người nhận đi tới bàn người giao nhận việc;
   //  - còn lại: tờ giấy bay từ người giao sang bàn người nhận.
   paper(from, to, color) {
     const A = this.actors.get(from.id), B = this.actors.get(to.id);
     if (!A || !B || A === B) return;
-    const meetingFloor = this.floors.findIndex((f) => f.kind === 'meeting');
-    const brief = (a, errand) => { if (!a.errands.some((e) => e.kind === 'brief')) { a.errands.push({ kind: 'brief', ...errand }); this.replan(a); } };
-    if (!B.s.fixed && !A.s.fixed && A.s.lead && A.s.dept === B.s.dept && meetingFloor >= 0) {
-      this.meetSeat = ((this.meetSeat || 0) + 1) % 5;
-      brief(B, { dest: { floor: meetingFloor, x: 5.84 + this.meetSeat * 0.88, z: 2.85 }, dwell: 5, heading: Math.PI, sit: true });
-      brief(A, { dest: { floor: meetingFloor, x: 5.0, z: 2.2 }, dwell: 7, heading: Math.PI / 2 });
+    if (B.s.fixed) return this.paperFlight(A, B, color);
+    if (A.s.fixed || (A.s.lead && A.s.dept === B.s.dept)) {
+      let p = this.pending.find((k) => k.host === A);
+      if (!p) this.pending.push(p = { host: A, people: [], t: performance.now(), color }); // gom theo đồng hồ thật: sự kiện tới theo thời gian thật
+      if (!p.people.includes(B)) p.people.push(B);
       return;
     }
-    if (!B.s.fixed && A.home.floor !== B.home.floor) {
-      brief(B, { dest: { floor: A.home.floor, x: A.visitor.x, z: A.visitor.z }, dwell: 2.5, heading: -Math.PI / 2 });
-      return;
-    }
+    this.visit(A, B, color);
+  }
+
+  // Chốt cuộc họp sau khi đã gom xong: CEO họp từ hai trưởng phòng trở lên ở phòng họp hội đồng;
+  // trưởng phòng họp ở phòng nhỏ nhất đủ chỗ. Hết phòng thì quay về cách giao từng người.
+  book(p) {
+    const A = p.host, n = p.people.length;
+    const fits = (r) => !r.busy && r.seats.length + (r.presenter ? 1 : 0) >= n + 1;
+    const room = A.s.fixed
+      ? (n >= 2 ? this.rooms.find((r) => r.kind === 'board' && fits(r)) : null)
+      : this.rooms.filter((r) => r.kind === 'meeting' && fits(r)).sort((x, y) => x.seats.length - y.seats.length)[0];
+    if (room) return this.startMeeting(A, p.people, room);
+    for (const B of p.people) this.visit(A, B, p.color);
+  }
+
+  startMeeting(host, people, room) {
+    room.busy = true;
+    const members = [host, ...people];
+    const m = { members: new Set(members), here: new Set(), created: this.simTime, length: 5 + 1.5 * people.length, room };
+    const spots = room.presenter ? [room.presenter, ...room.seats] : room.seats;
+    members.forEach((a, i) => {
+      const spot = spots[i];
+      a.errands.push({
+        kind: 'meet', meeting: m, host: a === host && Boolean(room.presenter),
+        dest: { floor: room.floor, x: spot.x, z: spot.z, via: spot.via }, heading: spot.heading, sit: !(room.presenter && i === 0),
+        release: () => { m.members.delete(a); m.here.delete(a); if (!m.members.size) room.busy = false; },
+      });
+      this.replan(a);
+    });
+  }
+
+  visit(A, B, color) {
+    if (B.s.fixed || A.home.floor === B.home.floor) return this.paperFlight(A, B, color);
+    if (B.errands.some((e) => e.kind === 'brief')) return;
+    B.errands.push({ kind: 'brief', dest: { floor: A.home.floor, x: A.visitor.x, z: A.visitor.z }, dwell: 2.5, heading: -Math.PI / 2 });
+    this.replan(B);
+  }
+
+  // ---- Hiệu ứng ------------------------------------------------------------------------
+  // Tờ giấy giao việc bay từ người giao sang bàn người nhận (vòng ra mặt tiền nếu khác tầng).
+  paperFlight(A, B, color) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.016, 0.4), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }));
     if (color) { // viền màu của phiên Claude Code
       const edge = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.018, 0.08), new THREE.MeshBasicMaterial({ color, toneMapped: false }));
@@ -1468,20 +1693,38 @@ export class View3D {
     } else if (!step) {
       heading = 0;
     } else if (step.k === 'walk') {
+      a.at = null;
       const dx = step.x - a.x, dz = step.z - a.z, dist = Math.hypot(dx, dz), move = WALK_SPEED * dt;
       if (dist <= move) { a.x = step.x; a.z = step.z; a.steps.shift(); }
       else { a.x += dx / dist * move; a.z += dz / dist * move; heading = Math.atan2(dx, dz); }
+      anim = 'walk';
+    } else if (step.k === 'climb') { // trên thang bộ: đi theo 3 chiều, chậm hơn đi bộ thường
+      const y0 = a.yAbs ?? a.floor * this.FH;
+      const dx = step.x - a.x, dy = step.y - y0, dz = step.z - a.z, dist = Math.hypot(dx, dy, dz), move = STAIR_SPEED * dt;
+      if (dist <= move) {
+        a.x = step.x; a.z = step.z; a.yAbs = step.y; a.steps.shift();
+        if (!a.steps[0] || a.steps[0].k !== 'climb') { a.floor = Math.round(step.y / this.FH); a.yAbs = null; }
+      } else { a.x += dx / dist * move; a.z += dz / dist * move; a.yAbs = y0 + dy / dist * move; }
+      if (Math.hypot(dx, dz) > 0.01) heading = Math.atan2(dx, dz);
       anim = 'walk';
     } else if (step.k === 'lift') {
       if (step.to === a.floor) a.steps.shift();
       else if (!step.called) { step.called = true; this.calls.push({ a, from: a.floor, to: step.to }); }
       heading = 0;                                        // đứng chờ thang, quay mặt ra cabin
     } else if (step.k === 'dwell') {
-      step.t -= dt;
       heading = step.heading ?? 0;
+      a.at = step.at;
       if (step.sit) { anim = 'sit'; lift = SEAT_LIFT; seated = true; }
+      else if (step.errand && step.errand.host) anim = Math.sin(time * 0.9 + a.phase) > 0.1 ? 'interact-right' : 'idle'; // người chủ trì đứng trình bày
       else anim = Math.sin(time * 1.1 + a.phase) > 0.55 ? 'emote-yes' : 'idle';
-      if (step.t <= 0) {
+      const m = step.errand && step.errand.meeting;
+      let done;
+      if (m) { // họp: chờ đủ người mới bắt đầu, họp xong cả phòng cùng ra
+        m.here.add(a);
+        if (!m.endAt && ([...m.members].every((x) => m.here.has(x)) || this.simTime - m.created > 45)) m.endAt = this.simTime + m.length;
+        done = m.endAt && this.simTime >= m.endAt;
+      } else { step.t -= dt; done = step.t <= 0; }
+      if (done) {
         if (step.errand && step.errand.release) step.errand.release();
         a.errands = a.errands.filter((e) => e !== step.errand);
         a.steps.shift();
@@ -1502,7 +1745,7 @@ export class View3D {
       if (a.rest < 0) { // hết đứng chờ: xuống canteen, lấy xe ra ngoài, hoặc đứng tiếp
         a.rest = 25 + Math.random() * 40;
         const pick = Math.random();
-        if (pick < 0.5) this.sendToCanteen(a); else if (pick < 0.8) this.sendOut(a);
+        if (pick < 0.4) this.sendToCanteen(a); else if (pick < 0.6) this.sendToTraining(a); else if (pick < 0.85) this.sendOut(a);
       }
     }
 
@@ -1517,7 +1760,8 @@ export class View3D {
     const driving = step && step.k === 'drive' && step.errand.phase;
     if (!a.riding && !driving) { // trong cabin hoặc trên xe thì vị trí do thang máy, xe đặt
       g.x = a.x; g.z = a.z;
-      g.y += (a.floor * this.FH + lift - g.y) * Math.min(1, dt * 8);
+      if (a.yAbs != null) g.y = a.yAbs;
+      else g.y += (a.floor * this.FH + lift - g.y) * Math.min(1, dt * 8);
     }
     // Quay người theo đường ngắn nhất.
     let d = heading - a.heading;
@@ -1539,6 +1783,7 @@ export class View3D {
     const dt = Math.min(this.clock.getDelta(), 0.1) * (this.timeScale || 1); // timeScale: tua nhanh khi kiểm thử
     this.simTime = (this.simTime || 0) + dt;
     const time = this.simTime;
+    if (this.pending.length) this.pending = this.pending.filter((p) => { if (performance.now() - p.t < 1200) return true; this.book(p); return false; });
     for (const a of this.actors.values()) this.animate(a, dt, time);
     this.effects = this.effects.filter((e) => {
       e.t += dt;
@@ -1560,15 +1805,10 @@ export class View3D {
     for (const L of this.lifts) this.updateLift(L, dt);
     if (this.barrier) { // barie tự nâng khi có xe ở gần chân ram
       const g = this.gate;
-      const near = this.drives.some((e) => e.phase !== 'away' && Math.abs(e.slot.car.position.x - g.x) < 2.2 && e.slot.car.position.z > g.zCourt - 5 && e.slot.car.position.z < g.zCourt + 3);
+      const near = this.drives.some((e) => { const p = e.slot.car.position; return e.phase !== 'away' && p.y < -0.8 && Math.abs(p.x - g.x) < 2.2 && Math.abs(p.z - g.barrierZ) < 3.2; });
       this.barrier.rotation.z += ((near ? 1.25 : 0) - this.barrier.rotation.z) * Math.min(1, dt * 5);
     }
-    const span = this.FW / 2 + 16;
-    for (const t of this.traffic) { // xe chạy ngang qua trước trụ sở
-      t.car.position.x += t.dir * t.speed * dt;
-      if (t.car.position.x > this.FW / 2 + span) t.car.position.x = this.FW / 2 - span;
-      if (t.car.position.x < this.FW / 2 - span) t.car.position.x = this.FW / 2 + span;
-    }
+    this.updateTraffic(dt);
     if (this.goal) { // máy quay lướt mượt tới điểm cần xem
       const k = 1 - Math.exp(-dt * 3.0);
       this.controls.target.lerp(this.goal.target, k);
