@@ -86,9 +86,9 @@ Hạ tầng chung của tòa nhà:
 
 **Đi lại giữa các tầng.** Cách một tầng thì đi thang bộ: ra cửa thang ở vách phải, leo từng vế thang, vào tầng đích. Cách hai tầng mà thang máy đang có từ ba lượt gọi trở lên cũng đi thang bộ. Xa hơn, hoặc xuống hầm B1 (thang bộ không xuống hầm), thì đi thang máy.
 
-**Họp.** Các lần giao việc của cùng một người trong vòng 1,2 giây được gom thành một cuộc họp. Cuộc họp chỉ bắt đầu khi đủ người (hoặc sau 30 giây nếu có người tới muộn) và kéo dài 3,5 giây cộng 1 giây cho mỗi người dự. Ai làm xong việc trước khi buổi họp bắt đầu thì bỏ họp, về luôn; nếu không còn ai dự thì người chủ trì cũng rời phòng. Người đang có việc đi nhanh hơn người đang rảnh. Người vào chỗ theo lối riêng của từng phòng: hàng ghế sau đi vòng đầu bàn, phòng họp nhỏ đi qua cửa ở vách sau, khu đào tạo đi theo khe giữa hai hàng ghế.
+**Họp.** Các lần giao việc của cùng một người trong vòng 1,2 giây được gom thành một cuộc họp. Cuộc họp chỉ bắt đầu khi đủ người (hoặc sau 30 giây nếu có người tới muộn) và kéo dài 3,5 giây cộng 1 giây cho mỗi người dự. Ai làm xong việc trước khi buổi họp bắt đầu thì bỏ họp, về luôn; nếu không còn ai dự thì người chủ trì cũng rời phòng. Ai làm xong việc trước khi kịp ngồi vào bàn thì không đi về bàn nữa mà về chỗ chờ, để nhân vật không hiện trạng thái cũ. Người đang có việc đi nhanh hơn người đang rảnh. Người vào chỗ theo lối riêng của từng phòng: hàng ghế sau đi vòng đầu bàn, phòng họp nhỏ đi qua cửa ở vách sau, khu đào tạo đi theo khe giữa hai hàng ghế.
 
-**Tránh nhau.** Người đi ngược chiều cùng nép sang phải để đi qua nhau, trên hành lang lẫn trên thang bộ; người phía trước đi cùng chiều mà chậm thì người sau giảm tốc theo. Người chờ thang máy đứng xếp hàng trước cửa cabin. Người đi đường cũng đi bên phải: mỗi chiều trên vỉa hè và trên vạch qua đường có lối riêng.
+**Tránh nhau.** Người đi ngược chiều cùng nép sang phải để đi qua nhau, trên hành lang lẫn trên thang bộ. Người phía trước đi cùng chiều mà chậm thì người sau giảm tốc theo, sát quá thì dừng. Hai người đi cắt ngang nhau (ví dụ gặp nhau ở góc hành lang) thì người thấy đối phương ở bên phải dừng nhường, người kia đi tiếp. Người chờ thang máy đứng xếp hàng trước cửa cabin; tới tầng thì bước ra lần lượt. Họp xong mọi người rời phòng lần lượt. Người đi đường cũng đi bên phải: mỗi chiều trên vỉa hè và trên vạch qua đường có lối riêng, chờ đèn thì xếp hàng theo thứ tự đến.
 
 **Giao thông.** Đường bốn làn, mỗi chiều hai làn, xe chạy bên phải. Mỗi xe giữ khoảng cách với xe phía trước. Xe bị xe chậm chặn thì sang làn vượt khi làn đó đủ trống, vượt xong về lại làn phải; không chuyển làn trong đoạn 7 m quanh vạch qua đường. Đèn giao thông đổi xanh, vàng, đỏ; xe dừng sau vạch dừng khi đèn đỏ, đèn vàng mà còn đủ xa thì dừng, đã sát vạch thì đi tiếp. Người đi bộ chỉ bước xuống khi đèn xe đã đỏ được 1,5 giây và còn đủ thời gian đi hết vạch. Xe xếp hàng chờ đèn không dừng chắn lối ra vào hầm. Xe ra khỏi hầm dừng trước barie chờ barie nâng, lên ram, dừng ở vạch nhường đường tới khi làn trống rồi mới rẽ phải vào làn. Xe về giảm tốc rẽ phải vào ram, dừng chờ barie, chạy qua ô của mình rồi lùi vào ô.
 
@@ -250,9 +250,9 @@ Repo dùng 9 trong 13 nhân vật đời thường của bộ gốc (thêm `male
 - Dấu chờ duyệt quyền chỉ tắt khi nhân viên đó có hoạt động kế tiếp, nên có thể còn hiện một lúc sau khi bạn đã duyệt.
 - Phiên bị tắt đột ngột: nhân viên của phiên đó ở lại bàn tối đa 30 phút rồi mới về góc tiếp khách.
 - Nhân vật theo phong cách khối vuông đơn giản; có 8 dáng nhân viên.
-- Nhân vật vẫn có thể tới bàn trễ hơn trạng thái thật vài giây vì phải đi lại và họp.
+- Đi lại vẫn mất thời gian: nhân vật tới bàn sau khi việc đã bắt đầu vài giây (bong bóng, bảng việc và nhật ký vẫn hiện trạng thái thật ngay lập tức).
 - Lúc rất nhiều người được giao việc cùng lúc vẫn có thể có hàng chờ thang máy.
-- Tránh nhau chỉ xét người đi đối diện và người đi trước cùng chiều; hai người đi vuông góc ở góc hành lang vẫn có thể lướt sát nhau.
+- Rất hiếm khi hai người đi đường lướt sát nhau ở góc vạch qua đường, nơi luồng người qua đường gặp luồng người trên vỉa hè (đo được 1 khung hình trong khoảng 4 phút mô phỏng).
 - Bản 2D dự phòng chỉ vẽ các tầng dạng dải, không có hầm xe và nội thất riêng từng tầng.
 - Nhãn tên không bị che bởi sàn hay tường nên đôi khi hiện xuyên qua vật cản.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.
