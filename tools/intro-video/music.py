@@ -67,7 +67,10 @@ def whoosh(t0, dur=0.5, g=0.09):
         cut = 0.02 + 0.25 * (i / n); a += cut * (x[i] - a); y[i] = a
     e = np.sin(np.pi * np.arange(n) / n) ** 2
     add(y * e * 3, t0 - dur / 2, g=g)
-for c in [5.0, 13.0, 15.0, 17.2, 19.2, 21.4, 23.5, 26.0, 29.0]: whoosh(c)
+for c in [5.0, 13.0, 15.0, 16.9, 19.0, 21.2, 22.9, 26.0, 29.0]: whoosh(c)
+# tiếng chuông nhỏ mỗi lần một skill bắt đầu chạy (khớp kịch bản demo sau khi dồn thời gian)
+for j, tk in enumerate([8.0, 11.22, 11.64, 13.13, 17.42, 17.78, 18.14, 19.27, 20.4, 24.75, 29.23]):
+    add(tone(note([79, 83, 86][j % 3]), 0.6, 'bell', a=0.002, d=0.16), tk + 0.15, pan=0.3 * np.sin(j), g=0.09)
 add(tone(note(72), 3.5, 'bell', a=0.003, d=1.2), 35.4, g=0.16); add(tone(note(79), 3.5, 'bell', a=0.003, d=1.2), 35.5, g=0.12); add(tone(note(84), 3.5, 'bell', a=0.003, d=1.2), 35.6, g=0.1)
 # hồi âm đơn giản + chuẩn hoá + fade
 for d, g in ((0.11, 0.25), (0.23, 0.16), (0.37, 0.1)):

@@ -33,6 +33,7 @@
     engineering: floor('engineering'), lobby: floor('lobby'), operations: floor('operations'),
     parking: floor('parking'), qa: staff('qa-reviewer'), exec: floor('executive'),
   };
+  { const b = V.boards.find((x) => x.dept === 'marketing'); const T = b.pos.clone().add(v3(-1.8, -0.3, 1.0)); SH.skillcam = { pos: v3(b.pos.x - 0.3, b.pos.y + 0.83, 9.6), target: T }; }
   const g = V.gate;
   SH.street = { pos: v3(g.cwX + 9.0, 2.6, g.zStreet + 15.5), target: v3(g.cwX - 0.5, 0.9, g.zStreet + 3.2) };
   const orbit = (S, yawDeg, distK = 1, lift = 0) => {
@@ -78,14 +79,14 @@
   root.innerHTML = `
   <div id="v-title"><div class="logo"><b>T</b><i></i></div><div><h1>T-outbox</h1><p>Công ty AI của bạn, ngay trong Claude Code</p></div></div>
   <div id="v-tags"></div>
-  <div id="v-count"><span>1 CEO</span><em>·</em><span>5 phòng ban</span><em>·</em><span>17 nhân viên AI</span></div>
+  <div id="v-count"><span>1 CEO</span><em>·</em><span>5 phòng ban</span><em>·</em><span>17 nhân viên AI</span><em>·</em><span>21 skill</span></div>
   <div id="v-mark"><div class="logo sm"><b>T</b><i></i></div>T-outbox</div>
   <div id="v-foot">lanhmar.id.vn</div>
   <div id="v-chip"><i></i><span></span></div>
   <div id="v-cmd"><div class="who">Claude Code</div><div class="box"><span class="pr">❯</span><span class="tx"></span><span class="caret"></span><span class="send">↑</span></div></div>
-  <div id="v-card"><div class="l"><small></small><h2></h2><p></p></div><div class="r"><small>Nhân viên AI</small><div class="chips"></div></div></div>
+  <div id="v-card"><div class="l"><small></small><h2></h2><p></p></div><div class="r"><small>Skill của phòng</small><div class="chips"></div></div></div>
   <div id="v-end"><div class="logo lg"><b>T</b><i></i></div><h2>Lập công ty AI<br><em>của riêng bạn</em></h2>
-    <p>Cài plugin T-outbox vào Claude Code. Bạn giao việc, cả đội làm.</p>
+    <p>Cài plugin T-outbox vào Claude Code. Bạn giao việc, cả đội làm theo skill của từng phòng.</p>
     <pre>/plugin marketplace add thecoolestmarperindawurl/t-outbox-office
 /plugin install t-outbox@t-outbox</pre>
     <div class="cta">▶ Xem văn phòng 3D: lanhmar.id.vn/apps/t-outbox</div>
@@ -117,7 +118,7 @@
   .tag small { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; color: #6d6790; }
   #v-count { left: 0; right: 0; bottom: 64px; display: flex; justify-content: center; gap: 14px; font-size: 22px; font-weight: 800; color: ${ink}; }
   #v-count em { color: ${orange}; font-style: normal; }
-  #v-count span:nth-child(5) { color: ${brand}; }
+  #v-count span:nth-child(5), #v-count span:nth-child(7) { color: ${brand}; }
   #v-mark { left: 26px; top: 22px; display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 18px; color: ${brand}; background: rgba(255,255,255,.86); padding: 7px 14px 7px 8px; border-radius: 14px; box-shadow: 0 6px 18px rgba(45,47,239,.16); }
   #v-foot { right: 22px; bottom: 16px; font-size: 13px; font-weight: 700; color: #fff; background: rgba(36,31,69,.55); padding: 4px 10px; border-radius: 8px; }
   #v-chip { right: 26px; top: 24px; display: flex; gap: 10px; align-items: center; background: #fff; border-radius: 99px; padding: 10px 20px 10px 14px; font-size: 18px; font-weight: 700; box-shadow: 0 10px 26px rgba(45,47,239,.2); max-width: 760px; }
@@ -165,12 +166,12 @@
 
   // ---- kịch bản ----
   const DEPTS = [
-    { at: 13.0, shot: 'product', floor: 6, name: 'Sản phẩm & Thiết kế', desc: 'Chốt phạm vi, nghiên cứu khách hàng, bộ hình ảnh ra mắt', c: '#7c5cbf', ids: ['product-manager', 'researcher', 'designer'] },
-    { at: 15.0, shot: 'marketing', floor: 5, name: 'Marketing', desc: 'Kế hoạch 30 ngày, lịch nội dung, SEO, quảng cáo', c: '#e4572e', ids: ['marketing-lead', 'content-writer', 'seo-specialist', 'ads-specialist'] },
-    { at: 17.2, shot: 'sales', floor: 4, name: 'Kinh doanh & CSKH', desc: 'Bán hàng và chăm sóc khách hàng sau ra mắt', c: '#2f9e6e', ids: ['sales-lead', 'customer-support'] },
-    { at: 19.2, shot: 'engineering', floor: 7, name: 'Kỹ thuật & Dữ liệu', desc: 'Landing page, đo lường dữ liệu, kiểm thử chất lượng', c: '#2f7fd1', ids: ['tech-lead', 'web-developer', 'data-analyst', 'qa-reviewer'] },
-    { at: 21.4, yaw: -22, shot: 'lobby', floor: 1, name: 'Sảnh đón tiếp', desc: 'Lễ tân, bảo vệ, hai thang máy, thang bộ thoát hiểm và hệ thống PCCC', c: '#4b4f9c', ids: [], kicker: 'Tầng 1 · Sảnh' },
-    { at: 23.5, shot: 'operations', floor: 8, name: 'Vận hành', desc: 'Dự toán ngân sách, pháp chế, nhân sự', c: '#b8860b', ids: ['operations-lead', 'finance-analyst', 'legal-counsel', 'hr-specialist'] },
+    { at: 13.0, shot: 'product', dept: 'product', floor: 6, name: 'Sản phẩm & Thiết kế', desc: 'Chốt phạm vi, nghiên cứu khách hàng, bộ hình ảnh ra mắt', c: '#7c5cbf' },
+    { at: 15.0, shot: 'marketing', dept: 'marketing', floor: 5, name: 'Marketing', desc: 'Kế hoạch 30 ngày, lịch nội dung, SEO, quảng cáo', c: '#e4572e' },
+    { at: 16.9, shot: 'skillcam', dept: 'marketing', floor: 5, name: 'Bảng kỹ năng', desc: 'Skill đang chạy sáng màu phòng, thẻ skill bay tới người vừa gọi', c: '#e4572e', kicker: 'Tầng 5 · Mỗi phòng một bộ skill' },
+    { at: 19.0, shot: 'engineering', dept: 'engineering', floor: 7, name: 'Kỹ thuật & Dữ liệu', desc: 'Kế hoạch kỹ thuật, landing page, số liệu, kiểm thử', c: '#2f7fd1' },
+    { at: 21.2, shot: 'sales', dept: 'sales', floor: 4, name: 'Kinh doanh & CSKH', desc: 'Kịch bản bán hàng, trả lời khách sau ra mắt', c: '#2f9e6e' },
+    { at: 22.9, shot: 'operations', dept: 'operations', floor: 8, name: 'Vận hành', desc: 'Dự toán ngân sách, quy trình, hợp đồng, tuyển dụng', c: '#b8860b' },
   ];
   const DEPT_END = 26.0;
   const CUTS = [5.0, ...DEPTS.map((d) => d.at), DEPT_END, 29.0];
@@ -187,6 +188,7 @@
       const d = DEPTS[i], end = (DEPTS[i + 1] || { at: DEPT_END }).at, S = SH[d.shot];
       const k = out(span(t, d.at, end + 0.6));
       const y = d.yaw || 0;
+      if (d.shot === 'skillcam') return tween(orbit(S, 8, 1.08, 0.2), orbit(S, -4, 0.95), k);
       return tween(orbit(S, y + 7, 1.0, 0.4), orbit(S, y - 3, 0.86), k);
     }
     if (t < 29) { const k = span(t, DEPT_END, 29); return { pos: SH.street.pos.clone().add(v3(-4.2 * k, 0, 0)), target: SH.street.target.clone().add(v3(-2.2 * k, 0, 0)) }; }
@@ -251,9 +253,9 @@
     // câu dẫn góc trên
     const chips = [
       [5.6, 10.0, 'Bạn là sếp: giao một việc lớn'],
-      [10.2, 13.0, 'CEO chia việc cho các phòng ban'],
+      [10.2, 13.0, 'CEO chạy /brief, chia việc cho các phòng ban'],
       [26.2, 29.0, 'Tòa nhà sống: xe chạy đúng luật, nhường người qua đường'],
-      [29.2, 31.8, 'QA soát chéo trước khi nộp'],
+      [29.2, 31.8, 'QA chạy /qa-check, soát chéo trước khi nộp'],
       [31.8, 35.0, 'CEO tổng hợp, báo cáo lại cho bạn'],
     ];
     const ch = chips.find(([a, b]) => t >= a && t < b);
@@ -271,13 +273,14 @@
         card.querySelector('.l small').textContent = d.kicker || `Tầng ${d.floor} · Phòng ban`;
         card.querySelector('h2').textContent = d.name;
         card.querySelector('p').textContent = d.desc;
-        card.querySelector('.r').style.display = d.ids.length ? '' : 'none';
-        card.querySelector('.chips').innerHTML = d.ids.map((id) => `<span data-id="${id}">${id}</span>`).join('');
+        const bd = V.boards.find((x) => x.dept === d.dept);
+        card.querySelector('.chips').innerHTML = (bd ? bd.rows : []).map((k) => `<span data-id="${k.id}">/${k.id}</span>`).join('');
       }
+      const bd = V.boards.find((x) => x.dept === d.dept);
       for (const el of card.querySelectorAll('.chips span')) {
-        const a = V.actors.get(el.dataset.id);
-        el.classList.toggle('on', Boolean(a && a.status === 'working'));
-        el.classList.toggle('ok', Boolean(a && a.status === 'done'));
+        const on = bd && bd.active.has(el.dataset.id);
+        el.classList.toggle('on', Boolean(on));
+        el.classList.toggle('ok', Boolean(!on && bd && bd.counts[el.dataset.id]));
       }
       show('v-card', Math.min(span(t, d.at + 0.1, d.at + 0.45), 1 - span(t, end - 0.2, end)), 26 * (1 - out(span(t, d.at + 0.1, d.at + 0.55))));
     } else show('v-card', 0);
