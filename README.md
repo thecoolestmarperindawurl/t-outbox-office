@@ -48,6 +48,46 @@ CEO là phiên Claude Code chính. CEO giao việc cho trưởng phòng, trưở
 
 Khi gọi đích danh, thêm tiền tố plugin: `t-outbox:content-writer`.
 
+## Bộ skill theo phòng ban
+
+Mỗi phòng có bộ skill riêng đi kèm plugin. Skill là quy trình làm việc chuẩn: đầu vào cần có, các bước, khung đầu ra lưu vào `deliverables/<phòng>/`, danh sách tự soát và nguyên tắc dữ liệu (số liệu phải ghi rõ là có nguồn, ước tính hay ý kiến, không tự đặt số).
+
+| Phòng | Skill (`/t-outbox:<tên>`) | Người dùng chính |
+| --- | --- | --- |
+| Ban điều hành | `brief` giao việc lớn, `brand` nạp brand, `hire` tuyển thêm người, `open` mở trụ sở | CEO |
+| Marketing | `marketing-plan` kế hoạch marketing, `content-calendar` lịch nội dung, `seo-audit` từ khóa và SEO, `ad-campaign` chiến dịch quảng cáo | TP Marketing, Content, SEO, Ads |
+| Sản phẩm & Thiết kế | `product-brief` brief sản phẩm, `customer-research` nghiên cứu khách hàng và đối thủ, `design-brief` brief và dựng thiết kế | TP Sản phẩm, Research, Design |
+| Kỹ thuật & Dữ liệu | `tech-plan` kế hoạch kỹ thuật, `landing-page` dựng landing page, `data-report` báo cáo số liệu, `qa-check` soát chất lượng | TP Kỹ thuật, Web, Data, QA |
+| Kinh doanh & CSKH | `sales-script` kịch bản bán hàng, `customer-reply` trả lời khách và FAQ | TP Kinh doanh, CSKH |
+| Vận hành | `process-sop` quy trình SOP, `budget-estimate` dự toán, `contract-check` rà soát hợp đồng, `hiring-plan` kế hoạch tuyển dụng | TP Vận hành, Tài chính, Pháp chế, Nhân sự |
+
+Hồ sơ của từng nhân viên ghi skill của họ, nên khi nhận việc khớp skill thì họ gọi skill đó trước khi làm; trưởng phòng nhắc tên skill khi giao việc cho nhân viên. Bạn cũng có thể gọi thẳng, ví dụ `/t-outbox:content-calendar tháng 12, kênh Facebook và TikTok`.
+
+**Trên văn phòng 3D**, mỗi tầng treo một **bảng kỹ năng** ở góc tiếp khách:
+
+- Skill đang chạy sáng màu phòng ban, ghi "ĐANG CHẠY" và tên người chạy; số lần đã chạy hiện bên phải mỗi dòng.
+- Một thẻ skill bay từ bảng tới người vừa gọi skill (khác tầng thì vòng ra mặt tiền).
+- Bong bóng trên đầu người đó có nhãn `⚡/tên-skill` cho tới khi họ xong việc; danh sách phòng ban bên phải ghi skill đang chạy của từng phòng.
+- Skill ngoài danh sách (skill bạn cài thêm, skill của plugin khác) hiện ở dòng cuối bảng của phòng người đang chạy.
+- Sếp gõ thẳng lệnh skill (ví dụ `/t-outbox:brief ...`) thì CEO chạy skill đó trên bảng của Ban điều hành.
+
+![Bảng kỹ năng và nhân viên đang chạy skill](docs/skills.png)
+
+Muốn đưa skill riêng của bạn lên bảng, thêm vào `.t-outbox/roster.json` của dự án (danh sách `skills` thay cho danh sách mặc định của phòng đó, tối đa 5 dòng):
+
+```json
+{
+  "departments": [
+    { "id": "marketing", "skills": [
+      { "id": "marketing-plan", "name": "Kế hoạch marketing", "owner": "marketing-lead" },
+      { "id": "caption-writer", "name": "Viết caption", "owner": "content-writer" }
+    ] }
+  ]
+}
+```
+
+`id` là tên skill (phần sau dấu `:` nếu skill thuộc plugin khác), `owner` là nhân viên phụ trách: ở chế độ Sôi nổi, khi CEO tự chạy skill đó thì người phụ trách hiện lên hỗ trợ.
+
 ## Tòa nhà
 
 Các tầng xếp theo logic của một trụ sở thật, từ khu công cộng lên khu riêng tư:
@@ -272,6 +312,8 @@ Repo dùng 9 trong 13 nhân vật đời thường của bộ gốc (thêm `male
 - Bản 2D dự phòng chỉ vẽ các tầng dạng dải, không có hầm xe và nội thất riêng từng tầng.
 - Nhãn tên không bị che bởi sàn hay tường nên đôi khi hiện xuyên qua vật cản.
 - Chưa có chụp ảnh, quay clip và tour trong trang; danh sách việc riêng của Claude (TodoWrite) chưa hiện thành thẻ.
+- Bảng kỹ năng chỉ thấy skill được gọi qua Skill tool (hook ghi lại lời gọi đó). Nhân viên có gọi skill hay không vẫn do model quyết theo hồ sơ của họ; skill nạp sẵn vào subagent bằng trường `skills:` trong frontmatter không qua Skill tool nên không hiện trên bảng.
+- Mỗi bảng hiện tối đa 5 skill của phòng và 1 dòng cho skill ngoài danh sách (chỉ giữ skill ngoài danh sách gần nhất). Số lần chạy đếm từ lúc mở trang.
 - Design chỉ dựng được bản thiết kế thật khi phiên làm việc có công cụ thiết kế kết nối (ví dụ Canva qua MCP); nếu không, kết quả là brief hoặc file SVG/HTML.
 
 ## Giấy phép

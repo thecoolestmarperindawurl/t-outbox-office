@@ -53,6 +53,13 @@ function config() {
     const found = staff.find((s) => s.id === c.id);
     if (found) Object.assign(found, c); else staff.push({ ...c });
   }
+  // Dự án có thể đổi hoặc thêm skill cho từng phòng ban (departments[].skills) theo id phòng.
+  const departments = (base.departments || []).map((d) => ({ ...d }));
+  for (const c of Array.isArray(custom.departments) ? custom.departments : []) {
+    if (!c || typeof c.id !== 'string') continue;
+    const found = departments.find((d) => d.id === c.id);
+    if (found) Object.assign(found, c);
+  }
   const baseBrand = readJson(path.join(pluginRoot, 'office', 'brand.json')) || {};
   const b = readJson(brandFile) || {};
   const brand = {
@@ -61,7 +68,7 @@ function config() {
     uniform: { ...baseBrand.uniform, ...(b.uniform || {}) },
     theme: { ...baseBrand.theme, ...(b.theme || {}) },
   };
-  return { ...base, staff, brand, project: path.basename(projectDir) };
+  return { ...base, staff, departments, brand, project: path.basename(projectDir) };
 }
 
 // ---- Theo dõi file sự kiện và file cấu hình --------------------------------------

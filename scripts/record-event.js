@@ -17,6 +17,7 @@ const OFFICE_CONTEXT = [
   'Vận hành (operations-lead; finance-analyst, legal-counsel, hr-specialist).',
   'Việc cần nhiều người trong một phòng thì giao cho trưởng phòng để họ tự chia; việc gọn của một chuyên môn thì giao thẳng cho nhân viên đó.',
   'Giao bằng Agent tool với mô tả ngắn, rõ đầu ra; việc độc lập thì giao song song; việc lớn thì cho t-outbox:qa-reviewer soát trước khi báo cáo sếp.',
+  'Mỗi phòng có bộ skill riêng (t-outbox:marketing-plan, content-calendar, seo-audit, ad-campaign, product-brief, customer-research, design-brief, tech-plan, landing-page, data-report, qa-check, sales-script, customer-reply, process-sop, budget-estimate, contract-check, hiring-plan): khi giao việc thì nhắc skill phù hợp; việc tự làm mà khớp skill thì gọi Skill tool.',
   'Việc nhỏ, hỏi đáp nhanh thì tự làm, không cần giao. Sếp xem văn phòng bằng lệnh /t-outbox:open.',
 ].join(' ');
 

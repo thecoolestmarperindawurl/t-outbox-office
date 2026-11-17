@@ -1,7 +1,7 @@
 {
   "name": "t-outbox",
   "displayName": "T-outbox",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Biến Claude Code thành một công ty: bạn là sếp, Claude là CEO, các subagent là trưởng phòng và nhân viên. Kèm văn phòng 3D chạy local, đồng phục theo brand của bạn.",
   "author": {
     "name": "T-outbox contributors"
@@ -13,6 +13,7 @@
     "company",
     "dashboard",
     "3d",
-    "vietnamese"
+    "vietnamese",
+    "skills"
   ]
 }
